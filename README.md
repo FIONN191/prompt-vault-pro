@@ -1,0 +1,167 @@
+# Prompt Vault Pro · 个人提示词素材库
+
+本地运行的提示词管理工作台：保存、搜索、分类、编辑、复制、组合、导出你的常用 AI 提示词。
+覆盖图片编辑、AI 生图、短视频封面、产品广告、UE5 游戏开发、JSON 图像反推、vibe coding 等工作流。
+
+- 技术栈：React 19 + Vite 6 + Tailwind CSS 4（无后端、无登录、无数据库）
+- 数据全部存在浏览器 / 应用的 localStorage 里
+- 桌面版：Electron 打包，Mac（dmg）+ Windows（exe）双端
+
+## 当前版本：v1.0.8
+
+- 左侧「+ 新增分类」支持就地输入，回车创建，Esc 取消；创建后自动进入新分类。
+- 「管理分类」支持名称、颜色、说明、排序，以及分类栏标题、收藏入口和数量显示设置。
+- 三种主题：简洁（默认灰阶）、浅色、霓虹；桌面主窗口、快速面板与悬浮球同步。
+- 桌面悬浮球可拖动、固定位置，支持 `Command/Ctrl+Shift+K` 快速唤起。
+- JSON 备份包含提示词和分类/外观设置，兼容旧版备份。
+
+详细使用说明：[自定义分类与主题](docs/categories-and-themes.md) · [桌面悬浮球](docs/desktop-floating.md)。
+
+此仓库包含源码、内置示例模板和测试，不包含用户运行时保存的提示词、API 密钥或个人备份。公开源码不代表另行授予开源许可证。
+
+![侧栏直接新增分类](docs/previews/sidebar-add-v1.0.8.png)
+
+---
+
+## 一、如何运行
+
+### 网页版（开发模式）
+
+```bash
+cd prompt-vault-pro
+npm install
+npm run dev
+```
+
+打开终端里显示的地址（默认 http://localhost:5177）。
+
+### 桌面版（打安装包）
+
+```bash
+npm run dist        # 同时打 Mac + Windows 安装包
+npm run dist:mac    # 只打 Mac
+npm run dist:win    # 只打 Windows
+```
+
+上述快捷命令沿用维护者的外接盘路径。其他电脑可以在安装依赖后，用以下方式输出到项目内的 `release/`：
+
+```bash
+npm run build
+npx electron-builder --mac --config.directories.output=release  # 在 macOS 上构建
+npx electron-builder --win --config.directories.output=release  # 建议在 Windows 上构建
+```
+
+macOS 跨平台生成 Windows 安装包还需要可用的 Wine；Apple Silicon 上的 x86_64 Wine 需要 Rosetta 2。当前 v1.0.8 Mac 包已在维护者本机验证，Windows v1.0.8 安装包尚未生成。本次仓库同步仅发布源码，不表示已发布 GitHub Release 安装包。
+
+产物在外接盘 `/Volumes/SN580 1TB Media/开发/PromptVaultPro/release/`（内置盘空间不足，打包输出和临时目录都指向外接盘，打包时必须挂载外接盘）：
+
+| 平台 | 文件 | 说明 |
+|---|---|---|
+| macOS | `PromptVaultPro-<版本>-mac.dmg` | universal（Intel + Apple Silicon） |
+| Windows | `PromptVaultPro-Setup-<版本>-win-x64.exe` | NSIS 安装器 |
+
+应用未签名，首次启动：
+
+- **macOS**：右键 → 打开（或终端执行 `xattr -cr /Applications/PromptVaultPro.app`）
+- **Windows**：SmartScreen 提示时点「更多信息 → 仍要运行」
+
+> 注意：网页版和桌面版的 localStorage 是各自独立的，用「导出 / 导入 JSON」在两边同步数据。
+
+---
+
+## 二、如何新增提示词
+
+三种方式：
+
+1. **手动新建**：导航栏「+ 新建」→ 填标题、分类、平台、标签，以及五个版本的提示词文本（中文 / 英文 / 短版 / 强执行版 / 负面），至少填一个版本。
+2. **生成器组合**：「生成器」页 → 选任务类型 → 勾约束条件 → 填补充说明 →「保存到素材库」。
+3. **JSON 导入**：见下一节。
+
+提示词文本中可以使用变量占位符（写在花括号里）：
+
+```
+{subject} {object} {background} {style} {aspect_ratio}
+{reference_image} {target_area} {platform} {tone}
+```
+
+也可以自造任何 `{英文变量名}`。保存时系统自动检测变量；在详情页填入变量值即可实时生成最终提示词，复制时自动代入。
+
+---
+
+## 三、如何导入 / 导出
+
+**导出**：仪表盘「⇩ 导出全部」或「导入/导出」页 → 下载 `prompt-vault-export-<日期>.json`。
+
+**导入**：「导入/导出」页点击 / 拖拽 JSON 文件（仪表盘也有入口）。支持两种结构：
+
+```jsonc
+// 结构 A：本工具导出的信封格式
+{ "app": "prompt-vault-pro", "prompts": [ ... ] }
+
+// 结构 B：裸数组
+[ { "title": "...", "chinesePrompt": "..." }, ... ]
+```
+
+- 导入是**追加合并**，不会覆盖现有数据
+- id 冲突时自动分配新 id
+- 缺失字段自动补默认值，不会导致崩溃
+
+**恢复默认模板**：「导入/导出」页红色区域 → 会清空当前所有数据并重置为 33 条内置模板（有二次确认，建议先导出备份）。
+
+---
+
+## 四、如何修改默认模板
+
+内置模板全部在 [src/data/defaultPrompts.js](src/data/defaultPrompts.js)：
+
+- `DEFAULT_PROMPTS`：33 条模板数组，每条一个对象，字段与应用内编辑器一一对应（id / title / category / platform / tags / description / chinesePrompt / englishPrompt / shortPrompt / strongPrompt / negativePrompt / variables / usageNotes / isFavorite / 时间戳）。直接增删改对象即可，`id` 用 `default-0xx` 风格保持唯一。
+- `CATEGORIES`：首次使用时的默认分类定义（id / 中文名 / 主题色）。日常新增分类直接使用侧栏「+ 新增分类」；名称、颜色、说明和排序在「管理分类」调整，无需修改代码。
+- `PLATFORMS`：平台下拉选项列表。
+
+改完后**已在使用中的数据不会自动更新**（localStorage 优先）；要看到新默认值，去「导入/导出」页执行一次「恢复默认模板」。
+
+生成器的任务类型和约束条件在 [src/utils/promptBuilder.js](src/utils/promptBuilder.js) 的 `TASK_TYPES` / `CONSTRAINTS` 数组里，同样直接加对象即可。
+
+---
+
+## 五、代码结构
+
+```
+src/
+  main.jsx                    入口
+  App.jsx                     全局状态、路由（视图切换）、增删改查、Toast、确认弹窗
+  index.css                   Tailwind 4 主题 token + 赛博朋克样式
+  data/defaultPrompts.js      默认模板 + 分类 + 平台定义
+  utils/storage.js            localStorage 读写、导入导出、剪贴板、时间格式化
+  utils/promptBuilder.js      变量系统 + 生成器任务/约束定义与组装
+  components/
+    Navbar.jsx                顶部导航 + 全局搜索
+    Sidebar.jsx               左侧分类栏（移动端为抽屉）
+    Dashboard.jsx             仪表盘：统计卡 / 最近使用 / 分类统计 / 快捷操作
+    PromptLibrary.jsx         提示词库：筛选工具栏 + 卡片网格 + 空状态
+    PromptCard.jsx            单张卡片
+    PromptDetailModal.jsx     详情弹窗：版本 tab / 一键复制 / 变量实时代入
+    PromptEditorModal.jsx     新建 / 编辑弹窗
+    PromptBuilder.jsx         生成器页面
+    ImportExportPanel.jsx     导入 / 导出 / 恢复默认页面
+    TagFilter.jsx             标签筛选 chips
+    Toast.jsx                 右下角提示
+electron/
+  main.cjs                    Electron 主进程（开发加载 dev server，打包加载 dist/）
+```
+
+## 六、验证与版本同步
+
+```bash
+npm run build
+node --test tests/preferences.test.mjs
+```
+
+Electron 交互测试需要可用的 Playwright 模块（如通过 `NODE_PATH` 指向单独安装的位置），测试使用独立的临时用户目录：
+
+```bash
+node tests/sidebar-category-smoke.cjs
+node tests/categories-theme-smoke.cjs
+```
+
+项目仓库为 [FIONN191/prompt-vault-pro](https://github.com/FIONN191/prompt-vault-pro)。每次更新完成并验证后，将相关改动提交并推送到 `main`；个人提示词数据、密钥、依赖和构建产物不进入源码提交。

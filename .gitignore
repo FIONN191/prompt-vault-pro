@@ -1,0 +1,34 @@
+# Dependencies and generated output
+node_modules/
+dist/
+release/
+coverage/
+test-results/
+playwright-report/
+*.log
+*.dmg
+*.exe
+*.blockmap
+*.app/
+
+# Local credentials and private user data
+.env
+.env.*
+!.env.example
+.npmrc
+*.pem
+*.key
+*.p12
+*.pfx
+user-data/
+userdata/
+backups/
+prompt-vault-export-*.json
+floating-orb.json
+
+# OS and editor caches
+.DS_Store
+._*
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,48 @@
+/* Semantic colors are shared by the main app, quick panel and native orb. */
+html[data-theme="minimal"] {
+  --color-void: #101010; --color-panel: #171717; --color-panel-2: #202020; --color-panel-3: #2b2b2b;
+  --color-line: #303030; --color-line-bright: #525252;
+  --color-ink: #f2f2f2; --color-dim: #b8b8b8; --color-faint: #929292;
+  --color-neon: #eeeeee; --color-neon-dim: #a3a3a3; --color-magenta: #e0e0e0;
+  --color-violet: #bcbcbc; --color-mint: #d4d4d4; --color-amber: #e5e5e5;
+}
+html[data-theme="light"] {
+  --color-void: #f6f6f4; --color-panel: #ffffff; --color-panel-2: #f0f0ed; --color-panel-3: #e5e5e1;
+  --color-line: #d8d8d3; --color-line-bright: #92928b;
+  --color-ink: #202020; --color-dim: #535353; --color-faint: #696969;
+  --color-neon: #202020; --color-neon-dim: #606060; --color-magenta: #303030;
+  --color-violet: #535353; --color-mint: #404040; --color-amber: #363636;
+}
+html[data-theme]:not([data-theme="neon"]) * {
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+html[data-theme]:not([data-theme="neon"]) :is(.bg-cybergrid, .neon-card, .neon-panel) {
+  background-image: none;
+  backdrop-filter: none;
+}
+html[data-theme]:not([data-theme="neon"]) :is(.neon-card, .neon-panel) { background-color: var(--color-panel); }
+html[data-theme]:not([data-theme="neon"]) .neon-card:hover { border-color: var(--color-line-bright); transform: none; }
+html[data-theme]:not([data-theme="neon"]) :is(.btn-neon, .btn-magenta) {
+  color: var(--color-ink); background: var(--color-panel-3); border-color: var(--color-line-bright);
+}
+html[data-theme]:not([data-theme="neon"]) :is(.btn-neon, .btn-magenta, .btn-ghost):hover { background: var(--color-panel-2); border-color: var(--color-dim); }
+html[data-theme]:not([data-theme="neon"]) :is(.input-cyber, select.input-cyber option) { background: var(--color-void); color: var(--color-ink); }
+html[data-theme]:not([data-theme="neon"]) .input-cyber:focus { border-color: var(--color-dim); }
+html[data-theme]:not([data-theme="neon"]) :focus-visible { outline: 2px solid var(--color-dim); outline-offset: 2px; }
+html[data-theme]:not([data-theme="neon"]) :is(.var-token, .var-token.filled) { color: var(--color-ink); background: var(--color-panel-3); }
+html[data-theme]:not([data-theme="neon"]) [class*="drop-shadow"] { filter: none; }
+html[data-theme]:not([data-theme="neon"]) [class*="blur-3xl"] { display: none; }
+html[data-theme]:not([data-theme="neon"]) :is(.fab-dock, .panel-slide-in, .modal-card, .toast-item) { animation: none; }
+html[data-theme]:not([data-theme="neon"]) .desktop-orb { background: var(--color-panel); color: var(--color-ink); border-color: var(--color-line-bright); }
+html[data-theme]:not([data-theme="neon"]) .desktop-orb:hover { background: var(--color-panel-3); outline-color: var(--color-dim); }
+html[data-theme]:not([data-theme="neon"]) .desktop-sparkle { color: var(--color-ink); }
+html[data-theme]:not([data-theme="neon"]) .desktop-orb.is-locked .desktop-sparkle { background: var(--color-panel); color: var(--color-ink); }
+html[data-theme]:not([data-theme="neon"]) input { accent-color: var(--color-ink); }
+html[data-theme]:not([data-theme="neon"]) ::-webkit-scrollbar-track { background: var(--color-void); }
+html[data-theme]:not([data-theme="neon"]) ::-webkit-scrollbar-thumb { background: var(--color-line-bright); border-color: var(--color-void); }
+html[data-theme].desktop-orb-page, html[data-theme].desktop-orb-page body, html[data-theme].desktop-orb-page #root { background: transparent; }
+html[data-theme]:not([data-theme="neon"]) button[style*="linear-gradient"] { background: var(--color-panel-3) !important; color: var(--color-ink); border: 1px solid var(--color-line-bright); }
+html[data-theme]:not([data-theme="neon"]) [class*="bg-[#"] { background-color: var(--color-dim); }
+button:not(:disabled):not(.desktop-orb), select { cursor: pointer; }
+button:disabled { opacity: .4; cursor: not-allowed; }
