@@ -181,3 +181,9 @@ node tests/quick-panel-smoke.cjs  # macOS 原生拖动、固定、搜索、标�
 ```
 
 项目仓库为 [FIONN191/prompt-vault-pro](https://github.com/FIONN191/prompt-vault-pro)。每次更新完成并验证后，将相关改动提交并推送到 `main`；个人提示词数据、密钥、依赖和构建产物不进入源码提交。
+
+### v1.0.12：Gemini Voyager JSON 兼容
+
+主界面「数据管理」和快速面板「提示词数据 → 导入」均支持直接选择 Gemini Voyager 原始导出 JSON（`format: gemini-voyager.prompts.v1`、`items` 数组）。保留正文、标签、创建/更新时间，缺标题时取正文前 60 字，归入「Gemini Voyager 导入」分类。英文或中英混合原文存放在正文（中文版）字段，不做翻译。
+
+Voyager 使用稳定的来源 ID，与此前转换版兼容；重复导入仅合并较新的版本，保留收藏和最近使用记录。错误条目会使整份导入失败，避免部分丢失。既有 Prompt Vault 备份、提示词数组和 `prompts` 对象继续支持。

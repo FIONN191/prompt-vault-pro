@@ -1,3 +1,4 @@
+import { parseImportDocument } from '../../electron/import-format.mjs'
 import { mergeImportedPrompts, parseImportedJson, persistPrompts } from './storage.js'
 import { ensurePromptCategories, normalizePreferences, persistPreferences, PREFERENCES_KEY } from './preferences.js'
 
@@ -13,7 +14,7 @@ export function persistWorkspace(prompts, preferences) {
   }
 }
 export function importWorkspace(text, currentPrompts, preferences, restoreSettings = false) {
-  const raw = JSON.parse(text)
+  const raw = parseImportDocument(text)
   const imported = parseImportedJson(text)
   const incoming = raw?.preferences && typeof raw.preferences === 'object' ? normalizePreferences(raw.preferences) : null
   const categories = restoreSettings && incoming ? [...incoming.categories, ...preferences.categories.filter(c => !incoming.categories.some(item => item.id === c.id))] : [...preferences.categories]

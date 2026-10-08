@@ -94,7 +94,8 @@ else {
           if (result.canceled) return { ok: true, cancelled: true }
           const filename = result.filePaths[0]
           if ((await fsp.stat(filename)).size > 20 * 1024 * 1024) throw new Error('文件超过 20 MB')
-          data = parsePayload(await fsp.readFile(filename, 'utf8'))
+          const { parseImportDocument } = await import('./import-format.mjs')
+          data = parsePayload(parseImportDocument(await fsp.readFile(filename, 'utf8')))
         } else throw new Error('未知操作')
         return { ok: true, data }
       } catch (error) { return { ok: false, error: error.message || '操作失败' } }

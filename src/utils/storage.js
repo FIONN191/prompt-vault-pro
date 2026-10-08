@@ -1,4 +1,5 @@
 // localStorage persistence + import/export + misc shared helpers
+import { parseImportDocument } from '../../electron/import-format.mjs'
 import { DEFAULT_PROMPTS } from '../data/defaultPrompts.js'
 
 const STORAGE_KEY = 'prompt_vault_pro_prompts_v1'
@@ -93,7 +94,7 @@ export function exportPromptsToFile(prompts, preferences) {
 
 /** Accepts either a bare array or the { prompts: [...] } export envelope. */
 export function parseImportedJson(text) {
-  const data = JSON.parse(text)
+  const data = parseImportDocument(text)
   const list = Array.isArray(data) ? data : data?.prompts
   if (!Array.isArray(list)) {
     throw new Error('JSON 结构不对：需要提示词数组，或包含 prompts 字段的对象')
@@ -107,8 +108,17 @@ export function mergeImportedPrompts(existing, imported) {
   const merged = [...existing]
   let added = 0
   let reassigned = 0
+  let updated = 0
   for (const item of imported) {
     const next = { ...item }
+    if (ids.has(next.id) && next.id.startsWith('gemini-voyager-')) {
+      const index = merged.findIndex(p => p.id === next.id)
+      if ((Date.parse(next.updatedAt) || 0) > (Date.parse(merged[index].updatedAt) || 0)) {
+        merged[index] = { ...next, isFavorite: merged[index].isFavorite, lastUsedAt: merged[index].lastUsedAt }
+        updated++
+      }
+      continue
+    }
     if (ids.has(next.id)) {
       next.id = generateId()
       reassigned += 1
@@ -117,7 +127,7 @@ export function mergeImportedPrompts(existing, imported) {
     merged.push(next)
     added += 1
   }
-  return { prompts: merged, added, reassigned }
+  return { prompts: merged, added, reassigned, updated }
 }
 
 /** Clipboard write with a fallback for non-secure contexts. */

@@ -28,7 +28,7 @@ export default function QuickPanelData({ onManageData }) {
   }
   return <section className="qv-data" aria-label="提示词数据">
     <div className="qv-section-heading"><strong>提示词数据</strong><button onClick={() => setSettingsOpen(v => !v)} disabled={!!busy} aria-expanded={settingsOpen}>Gist 设置</button></div>
-    <p>JSON 本地备份，或与 GitHub Secret Gist 合并同步。</p>
+    <p>支持 Prompt Vault / Gemini Voyager JSON 导入，或与 GitHub Secret Gist 合并同步。</p>
     <div className="qv-data-actions">{[['export', '↓ 导出'], ['import', '↑ 导入'], ['pull', '☁ 拉取（合并）'], ['upload', '☁ 上传（合并）']].map(([action, label]) => <button key={action} disabled={!!busy} onClick={() => { if (['pull', 'upload'].includes(action) && !status.configured) { setSettingsOpen(true); setMessage('请先填写 GitHub 令牌，再点击上传或拉取'); return } run(action) }}>{busy === action ? '处理中…' : label}</button>)}</div>
     {settingsOpen && <div className="qv-gist-settings">
       <label>GitHub 令牌<input aria-label="GitHub 令牌" type="password" autoComplete="off" value={token} onChange={e => setToken(e.target.value)} placeholder={status.configured ? '已保存，留空保留原令牌' : '需要 Gists 读写权限'} className="qv-input" /></label>

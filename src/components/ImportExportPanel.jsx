@@ -34,8 +34,8 @@ export default function ImportExportPanel({ prompts, onImportFile, onExportAll, 
       <div className="neon-panel p-5">
         <h2 className="text-sm font-bold tracking-widest text-dim mb-2">⇪ 导入 JSON</h2>
         <p className="text-xs text-dim leading-relaxed mb-3">
-          支持本工具导出的文件，或任意「提示词数组 / 含 prompts 字段」的 JSON。
-          导入时如遇 id 冲突会自动分配新 id，不会覆盖现有数据。
+          支持本工具备份、提示词数组 / 含 prompts 字段的 JSON，以及 Gemini Voyager 原始导出文件。
+          Voyager 重复导入按原始 ID 合并，仅更新较新的内容；其他格式遇 id 冲突会自动分配新 id。
           新分类会自动加入；同名分类 ID 默认保留本地属性。
         </p>
         <label className="flex gap-2 items-center text-sm text-dim mb-4"><input type="checkbox" checked={restoreSettings} onChange={e => setRestoreSettings(e.target.checked)} />同时恢复备份中的分类属性、主题和分类栏名称</label>

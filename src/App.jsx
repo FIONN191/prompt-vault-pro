@@ -218,7 +218,7 @@ export default function App() {
     for (const p of parsed.prompts) {
       const old = map.get(p.id)
       if (!old) { map.set(p.id, p); added++ }
-      else if ((Date.parse(p.updatedAt) || 0) > (Date.parse(old.updatedAt) || 0)) { map.set(p.id, p); updated++ }
+      else if ((Date.parse(p.updatedAt) || 0) > (Date.parse(old.updatedAt) || 0)) { map.set(p.id, p.id.startsWith('gemini-voyager-') ? { ...p, isFavorite: old.isFavorite, lastUsedAt: old.lastUsedAt } : p); updated++ }
     }
     const merged = [...map.values()]
     const next = ensurePromptCategories(parsed.preferences, merged)
@@ -281,12 +281,12 @@ export default function App() {
   const handleImportFile = async (file, restoreSettings = false) => {
     try {
       const text = await file.text()
-      const { prompts: merged, preferences: nextPreferences, added, reassigned } = importWorkspace(text, loadPrompts(), preferences, restoreSettings)
+      const { prompts: merged, preferences: nextPreferences, added, reassigned, updated } = importWorkspace(text, loadPrompts(), preferences, restoreSettings)
       persistWorkspace(merged, nextPreferences)
       setPrompts(merged)
       setPreferences(nextPreferences)
       showToast(
-        `导入成功：新增 ${added} 条${reassigned > 0 ? `（${reassigned} 条 id 冲突已重新分配）` : ''}`,
+        `导入成功：新增 ${added} 条，更新 ${updated} 条${reassigned > 0 ? `（${reassigned} 条 id 冲突已重新分配）` : ''}`,
       )
     } catch (e) {
       showToast(`导入失败：${e.message}`, 'error')
