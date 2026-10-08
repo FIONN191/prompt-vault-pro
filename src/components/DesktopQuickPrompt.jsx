@@ -108,6 +108,7 @@ export default function DesktopQuickPrompt({ orb }) {
       insertionPending={insertionPending}
       insertionMessage={insertionMessage}
       onChangeInsertion={changeInsertion}
+      onOpenSettings={() => bridge.openSettings()}
       onOpenInsertionSettings={() => bridge.insertion('settings')}
       onOpenPrompt={prompt => bridge.openMain(prompt.id)} />
     <Toast toasts={toasts} />

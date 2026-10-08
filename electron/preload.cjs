@@ -5,6 +5,11 @@ const listen = (channel, callback) => {
   return () => ipcRenderer.removeListener(channel, handler)
 }
 contextBridge.exposeInMainWorld('desktopPrompt', {
+  settings: (action, value) => ipcRenderer.invoke('desktop:settings', action, value),
+  account: (action, value) => ipcRenderer.invoke('desktop:account', action, value),
+  onAccount: cb => listen('desktop:account-state', cb),
+  openSettings: () => ipcRenderer.send('desktop:open-settings'),
+  onNavigate: cb => listen('desktop:navigate', cb),
   insertion: (action, value) => ipcRenderer.invoke('desktop:insertion', action, value),
   manageData: (action, value) => ipcRenderer.invoke('desktop:data', action, value),
   toggle: () => ipcRenderer.send('desktop:toggle'),

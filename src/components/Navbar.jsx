@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { id: 'builder', label: '生成器' },
   { id: 'forge', label: '锻造工坊' },
   { id: 'io', label: '导入/导出' },
+  { id: 'settings', label: '账号与设置' },
 ]
 
 export default function Navbar({ view, onNavigate, query, onSearch, onNew, onToggleSidebar, theme, onTheme }) {

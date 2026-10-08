@@ -37,7 +37,7 @@ function PromptGlyph({ className }) {
   )
 }
 
-export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenPrompt, onCreateCategory, onManageData, insertion, insertionPending, insertionMessage, onChangeInsertion, onOpenInsertionSettings, desktop = false }) {
+export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenPrompt, onCreateCategory, onManageData, insertion, insertionPending, insertionMessage, onChangeInsertion, onOpenInsertionSettings, onOpenSettings, desktop = false }) {
   const { categories, preferences, savePreferences } = usePreferences()
   const [captureOpen, setCaptureOpen] = useState(false)
   const [activeTag, setActiveTag] = useState(null)
@@ -250,7 +250,7 @@ export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenProm
 
             <footer className="qv-footer">
               {desktop && onChangeInsertion && <div className="qv-insertion"><label><input type="checkbox" aria-label="直接插入目标输入框" disabled={insertionPending} checked={!!insertion?.enabled} onChange={e => onChangeInsertion(e.target.checked)} /><span>直接插入目标输入框<small>关闭时仅复制 · 开启后粘贴，不自动发送</small></span></label>{insertion?.enabled && !insertion.permitted && <><button disabled={insertionPending} onClick={() => onChangeInsertion(true)}>授权 / 重新检查</button>{onOpenInsertionSettings && <button onClick={onOpenInsertionSettings}>打开辅助功能设置</button>}</>}{insertionMessage && <p role="status">{insertionMessage}</p>}</div>}
-              <button className={`qv-favorites ${favoritesOnly ? 'is-active' : ''}`} onClick={() => setFavoritesOnly(v => !v)} aria-pressed={favoritesOnly}><span>{favoritesOnly ? '★' : '☆'}</span> 收藏库 <small>{prompts.filter(p => p.isFavorite).length}</small></button><div className="qv-footer-meta"><span>{desktop ? '⌘/Ctrl + Shift + K' : '⌘/Ctrl + K'}<span className="qv-dot">·</span>Esc 收起</span><span>{onManageData ? <button onClick={() => { setDataOpen(v => !v); setCaptureOpen(false) }} aria-expanded={dataOpen}>⚙ 提示词数据</button> : '本地保存'}</span></div><span className="qv-resize-hint" title="拖动窗口边缘调整大小" aria-hidden="true">◢</span></footer>
+              <button className={`qv-favorites ${favoritesOnly ? 'is-active' : ''}`} onClick={() => setFavoritesOnly(v => !v)} aria-pressed={favoritesOnly}><span>{favoritesOnly ? '★' : '☆'}</span> 收藏库 <small>{prompts.filter(p => p.isFavorite).length}</small></button><div className="qv-footer-meta">{onOpenSettings && <button onClick={onOpenSettings} title="打开账号与设置">设置</button>}<span>{desktop ? '⌘/Ctrl + Shift + K' : '⌘/Ctrl + K'}<span className="qv-dot">·</span>Esc 收起</span><span>{onManageData ? <button onClick={() => { setDataOpen(v => !v); setCaptureOpen(false) }} aria-expanded={dataOpen}>⚙ 提示词数据</button> : '本地保存'}</span></div><span className="qv-resize-hint" title="拖动窗口边缘调整大小" aria-hidden="true">◢</span></footer>
           </aside>
         </>
       )}

@@ -1,0 +1,10 @@
+{
+  "apiKey": "AIzaSyAw2QmbNGjwbushoq8Wd0uwReYUM0EFUxY",
+  "authDomain": "prompt-vault-pro-fionn-261008.firebaseapp.com",
+  "projectId": "prompt-vault-pro-fionn-261008",
+  "appId": "1:200040741374:web:6bdb4930c54e517b25e8af",
+  "providers": [
+    "google.com",
+    "github.com"
+  ]
+}

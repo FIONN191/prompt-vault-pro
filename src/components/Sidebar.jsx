@@ -1,3 +1,4 @@
+import packageInfo from '../../package.json'
 // Left rail: category filter, favorites toggle, quick stats
 import { useId, useRef, useState } from 'react'
 import { usePreferences } from '../PreferencesContext.jsx'
@@ -132,7 +133,7 @@ export default function Sidebar({
 
       <div className="px-4 py-3 border-t border-line text-[11px] text-faint leading-relaxed">
         <div>本地保存 · 随时导出备份</div>
-        <div>Prompt Vault Pro · v1.0.8</div>
+        <div>Prompt Vault Pro · v{packageInfo.version}</div>
       </div>
     </div>
   )

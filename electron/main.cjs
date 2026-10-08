@@ -4,10 +4,12 @@ const fsp = require('node:fs/promises')
 const { createGistBackup } = require('./gist-backup.cjs')
 const { parsePayload } = require('./prompt-data.cjs')
 const { createDirectInsert } = require('./direct-insert.cjs')
+const { createAppSettings } = require('./app-settings.cjs')
+const { createFirebaseAuth } = require('./firebase-auth.cjs')
 const { createFloatingOrb } = require('./floating-orb.cjs')
 const DEV_URL = process.env.VITE_DEV_SERVER_URL
 let mainWindow, orbWindow, panelWindow, floatingOrb, quitting = false, snapshot = null
-let preferences = null, directInsert = null
+let preferences = null, directInsert = null, account = null
 const webPreferences = { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false }
 function load(win, hash = '') {
   if (DEV_URL) win.loadURL(DEV_URL + '#' + hash)
@@ -45,7 +47,32 @@ if (!app.requestSingleInstanceLock()) app.quit()
 else {
   app.on('second-instance', () => mainWindow && showMain())
   app.whenReady().then(() => {
-    mainWindow = new BrowserWindow({ width: 1360, height: 860, minWidth: 900, minHeight: 600, backgroundColor: '#05060c', title: 'Prompt Vault Pro', autoHideMenuBar: true, webPreferences })
+    const settings = createAppSettings({ app, settingsPath: path.join(app.getPath('userData'), 'app-settings.json'), isolated: process.argv.some(arg => arg.startsWith('--user-data-dir')) })
+    let bundledConfig = null
+    try { bundledConfig = require('./firebase-public.json') } catch {}
+    account = createFirebaseAuth({ directory: app.getPath('userData'), assets: path.join(__dirname, '..', 'dist-auth'), safeStorage, fetch: (...args) => net.fetch(...args), openExternal: url => shell.openExternal(url), bundledConfig, changed: value => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('desktop:account-state', value) } })
+    ipcMain.handle('desktop:settings', async (event, action, value) => {
+      if (!trusted(event, mainWindow)) return { ok: false, error: '无权操作' }
+      try {
+        if (action === 'status') return { ok: true, data: settings.status() }
+        if (action === 'startup' && typeof value === 'boolean') return { ok: true, data: settings.setStartup(value) }
+        throw new Error('未知设置操作')
+      } catch (error) { return { ok: false, error: error.message } }
+    })
+    let accountBusy = false
+    ipcMain.handle('desktop:account', async (event, action, value) => {
+      if (!trusted(event, mainWindow)) return { ok: false, error: '无权操作' }
+      if (accountBusy && action !== 'status') return { ok: false, error: '账号操作正在进行，请稍候' }
+      const ownsBusy = action !== 'status'
+      if (ownsBusy) accountBusy = true
+      try {
+        const actions = { status: () => account.state(), configure: () => account.configure(value), login: () => account.login(value), cancel: () => account.cancel(), logout: () => account.logout(), refresh: () => account.refresh() }
+        if (!Object.hasOwn(actions, action)) throw new Error('未知账号操作')
+        return { ok: true, data: await actions[action]() }
+      } catch (error) { return { ok: false, error: error.message } }
+      finally { if (ownsBusy) accountBusy = false }
+    })
+    mainWindow = new BrowserWindow({ show: !process.argv.includes('--startup') && !app.getLoginItemSettings().wasOpenedAtLogin, width: 1360, height: 860, minWidth: 900, minHeight: 600, backgroundColor: '#05060c', title: 'Prompt Vault Pro', autoHideMenuBar: true, webPreferences })
     orbWindow = floatWindow({ width: 72, height: 72, transparent: true, hasShadow: false, title: 'Prompt Vault 悬浮球' })
     panelWindow = floatWindow({ width: 420, height: 720, minWidth: 360, minHeight: 480, resizable: true, backgroundColor: '#0a0e1a', title: '快速提示词' })
     directInsert = createDirectInsert({
@@ -121,6 +148,8 @@ else {
     ipcMain.on('desktop:orb-drag-end', (event, id, cancelled) => { if (trusted(event, orbWindow)) floatingOrb.endDrag(id, cancelled === true) })
     ipcMain.on('desktop:toggle', event => { if (trusted(event, orbWindow) || trusted(event, mainWindow)) togglePanel() })
     ipcMain.on('desktop:close', event => { if (trusted(event, panelWindow)) closePanel() })
+    const openSettings = () => { showMain(); mainWindow.webContents.send('desktop:navigate', 'settings') }
+    ipcMain.on('desktop:open-settings', event => { if (trusted(event, panelWindow) || trusted(event, mainWindow)) openSettings() })
     ipcMain.on('desktop:main', (event, id) => { if (trusted(event, panelWindow) || trusted(event, orbWindow)) { closePanel(); showMain(typeof id === 'string' ? id : undefined) } })
     ipcMain.on('desktop:snapshot', (event, value) => {
       if (!trusted(event, mainWindow) || !Array.isArray(value)) return
@@ -161,6 +190,7 @@ else {
     }
     const floatingItems = () => [
       { label: '打开提示词库', click: () => showMain() },
+      { label: '账号与设置', click: openSettings },
       { label: '打开 / 收起快速面板', click: togglePanel },
       { id: 'orb-locked', label: '固定位置', type: 'checkbox', checked: floatingOrb.getState().locked, click: item => changeLocked(item.checked) },
       { label: '显示悬浮球', click: () => { floatingOrb.restore(); closePanel() } },
@@ -176,16 +206,17 @@ else {
       }
     })
     Menu.setApplicationMenu(Menu.buildFromTemplate([
-      ...(process.platform === 'darwin' ? [{ label: app.name, submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'quit' }] }] : []),
+      ...(process.platform === 'darwin' ? [{ label: app.name, submenu: [{ role: 'about' }, { label: '账号与设置…', accelerator: 'CommandOrControl+,', click: openSettings }, { type: 'separator' }, { role: 'quit' }] }] : []),
       { label: '悬浮球', submenu: floatingItems() },
       { label: '编辑', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     ]))
     if (!globalShortcut.register('CommandOrControl+Shift+K', togglePanel)) console.warn('全局快捷键被占用，可通过悬浮球打开面板')
+    account.refresh().catch(() => {})
     load(mainWindow)
     load(orbWindow, 'desktop-orb')
     load(panelWindow, 'desktop-panel')
     app.on('activate', () => showMain())
   })
 }
-app.on('before-quit', () => { quitting = true; floatingOrb?.cancelDrag(); directInsert?.stop() })
+app.on('before-quit', () => { quitting = true; floatingOrb?.cancelDrag(); directInsert?.stop(); account?.stop() })
 app.on('will-quit', () => globalShortcut.unregisterAll())

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import SettingsPanel from './components/SettingsPanel.jsx'
 import Navbar from './components/Navbar.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import Dashboard from './components/Dashboard.jsx'
@@ -49,6 +50,8 @@ export default function App() {
   const [prompts, setPrompts] = useState(() => loadPrompts())
   const [managerOpen, setManagerOpen] = useState(false)
   const [view, setView] = useState('dashboard')
+
+  useEffect(() => window.desktopPrompt?.onNavigate(next => { if (next === 'settings') setView(next) }), [])
 
   // library filters
   const [query, setQuery] = useState('')
@@ -465,6 +468,8 @@ export default function App() {
               onSaveToLibrary={(draft) => openNewEditor(draft)}
             />
           )}
+
+          {view === 'settings' && <SettingsPanel onNavigate={navigate} onManageCategories={() => setManagerOpen(true)} />}
 
           {view === 'io' && (
             <ImportExportPanel

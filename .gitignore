@@ -34,3 +34,6 @@ floating-orb.json
 *.swp
 electron/native/.build/
 electron/native/prompt-insert-mac
+
+dist-auth/
+firebase-debug.log
