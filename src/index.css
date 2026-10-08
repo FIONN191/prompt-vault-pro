@@ -22,6 +22,15 @@ html.desktop-orb-page, .desktop-orb-page body, .desktop-orb-page #root {
 }
 .desktop-sparkle { position: absolute; right: 0; top: -6px; color: #ff2ec4; }
 .desktop-panel-page body { min-height: 0; overflow: hidden; }
+/* Native window movement belongs only to the desktop panel header. */
+.quick-prompt-drag-handle {
+  -webkit-app-region: drag;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.quick-prompt-drag-handle button {
+  -webkit-app-region: no-drag;
+}
 @media (prefers-reduced-motion: reduce) {
   .fab-dock, .panel-slide-in { animation: none !important; }
 }

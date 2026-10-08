@@ -1,0 +1,78 @@
+/* Compact launcher surface uses the same semantic palette as the main app. */
+.quick-vault-panel {
+  --qv-bg: var(--color-panel); --qv-card: var(--color-panel-2); --qv-input: var(--color-void);
+  --qv-line: var(--color-line); --qv-text: var(--color-ink); --qv-muted: var(--color-dim);
+  --qv-accent: var(--color-neon); --qv-accent-bg: var(--color-panel-3);
+  color: var(--qv-text); background: var(--qv-bg); border: 1px solid var(--qv-line);
+  border-radius: 16px; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  width: 100%; max-width: 420px;
+}
+.quick-vault-web { width: min(420px, calc(100vw - 24px)); }
+.quick-vault-header { display: flex; align-items: center; gap: 8px; min-height: 70px; padding: 12px 14px; border-bottom: 1px solid var(--qv-line); flex-shrink: 0; }
+.quick-vault-grip { color: var(--qv-muted); font-size: 18px; margin-right: 2px; }
+.quick-vault-brand { flex: 1; min-width: 0; }
+.quick-vault-brand strong { display: flex; align-items: center; gap: 5px; font-size: 16px; font-weight: 750; letter-spacing: -.5px; white-space: nowrap; }
+.quick-vault-brand strong span { color: var(--qv-accent); font-size: 8px; letter-spacing: .5px; }
+.quick-vault-brand small { display: block; margin-top: 2px; font-size: 10px; letter-spacing: 1px; color: var(--qv-muted); }
+.quick-vault-panel button { cursor: pointer; transition: background-color .15s, border-color .15s, color .15s; }
+.quick-vault-panel button:focus-visible, .quick-vault-panel input:focus-visible, .quick-vault-panel textarea:focus-visible, .quick-vault-panel select:focus-visible { outline: 2px solid var(--qv-accent) !important; outline-offset: 2px; }
+.qv-icon { display: grid; place-items: center; height: 32px; width: 30px; flex-shrink: 0; border-radius: 10px; border: 1px solid var(--qv-line); background: var(--qv-card); color: var(--qv-muted); }
+.qv-icon svg { width: 17px; height: 17px; }
+.qv-icon:hover { color: var(--qv-text); border-color: var(--qv-muted); }
+.qv-icon.is-active { color: var(--qv-accent); background: var(--qv-accent-bg); border-color: var(--qv-accent); }
+.qv-theme { border: 0; border-radius: 20px; background: var(--qv-card); color: var(--qv-text); font-size: 19px; }
+.qv-close { border: 0; background: transparent; width: 22px; font-size: 22px; }
+.qv-primary { border-radius: 10px; background: var(--color-panel-3); color: var(--color-neon); border: 1px solid var(--color-line-bright); font-size: 12px; font-weight: 650; padding: 9px 12px; white-space: nowrap; }
+.qv-primary:hover { background: var(--qv-card); border-color: var(--qv-muted); }
+.qv-search-area { padding: 14px 14px 4px; flex-shrink: 0; }
+.qv-search-row { display: flex; gap: 8px; }
+.qv-search { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; background: var(--qv-input); border: 1px solid var(--qv-line); border-radius: 11px; padding: 0 12px; }
+.qv-search:focus-within { border-color: var(--qv-accent); }
+.qv-search svg { width: 16px; height: 16px; color: var(--qv-muted); flex-shrink: 0; }
+.qv-search input { width: 100%; min-width: 0; height: 43px; border: 0; outline: none !important; background: transparent; font-size: 13px; color: var(--qv-text); }
+.qv-search input::placeholder, .qv-input::placeholder { color: var(--qv-muted); }
+.qv-search button { color: var(--qv-muted); font-size: 19px; }
+.qv-layout { height: 45px; width: 42px; color: var(--qv-accent); border-color: var(--qv-accent); background: transparent; }
+.qv-tags { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 7px 6px; margin-top: 12px; max-height: 151px; overflow-y: auto; padding: 2px 2px 8px; scrollbar-width: thin; }
+.qv-tag { display: inline-flex; align-items: center; border-radius: 20px; padding: 5px 10px; font-size: 12px; line-height: 1.4; background: var(--qv-card); color: var(--qv-muted); border: 1px solid transparent; overflow-wrap: anywhere; text-align: left; }
+.qv-tag:hover { color: var(--qv-text); border-color: var(--qv-line); }
+.qv-tag.is-active { background: var(--qv-accent-bg); color: var(--qv-accent); }
+.qv-list-heading { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; font-size: 11px; color: var(--qv-muted); flex-shrink: 0; }
+.qv-list-heading b { font-weight: 400; padding-left: 7px; font-variant-numeric: tabular-nums; }
+.qv-list-heading small { font-size: 10px; }
+.qv-results { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 14px; display: flex; flex-direction: column; gap: 6px; }
+.qv-card { display: flex; align-items: center; flex-shrink: 0; min-height: 49px; border-radius: 10px; background: var(--qv-card); border: 1px solid transparent; }
+.qv-card:hover { border-color: var(--qv-line); background: var(--qv-input); }
+.qv-card-copy { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; flex: 1; min-width: 0; padding: 13px 11px; text-align: left; border-radius: 9px; }
+.qv-card-title { font-size: 13px; line-height: 1.5; font-weight: 550; overflow-wrap: anywhere; }
+.qv-star { color: var(--qv-accent); margin-right: 5px; }
+.qv-card-meta { display: flex; flex-wrap: wrap; gap: 4px; }
+.qv-badge { background: var(--qv-accent-bg); color: var(--qv-accent); border-radius: 9px; padding: 1px 6px; font-size: 9px; line-height: 1.7; overflow-wrap: anywhere; }
+.qv-detail { flex-shrink: 0; color: var(--qv-muted); padding: 10px; border-radius: 8px; font-size: 14px; }
+.qv-detail:hover { color: var(--qv-accent); }
+.qv-results.is-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; }
+.is-grid .qv-card { align-items: flex-start; position: relative; }
+.is-grid .qv-card-copy { display: flex; flex-direction: column; align-items: flex-start; padding: 12px 12px 28px; height: 100%; }
+.is-grid .qv-detail { position: absolute; bottom: 0; right: 0; padding: 5px 10px; }
+.qv-card-description { font-size: 11px; line-height: 1.6; color: var(--qv-muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.qv-footer { flex-shrink: 0; border-top: 1px solid var(--qv-line); padding: 12px 14px 10px; }
+.qv-favorites { display: flex; justify-content: center; align-items: center; gap: 7px; width: 100%; border: 1px solid transparent; border-radius: 11px; padding: 10px; font-size: 13px; font-weight: 600; color: var(--qv-accent); background: var(--qv-accent-bg); }
+.qv-favorites > span { font-size: 20px; line-height: 1; }
+.qv-favorites small { font-size: 10px; opacity: .75; }
+.qv-favorites.is-active { border-color: var(--qv-accent); }
+.qv-footer-meta { display: flex; justify-content: space-between; color: var(--qv-muted); font-size: 10px; padding: 12px 2px 0; }
+.qv-dot { padding: 0 6px; }
+.qv-empty { padding: 25px 12px; text-align: center; color: var(--qv-muted); grid-column: 1 / -1; }
+.qv-empty > span { display: block; color: var(--qv-accent); font-size: 30px; }
+.qv-empty strong { display: block; margin: 8px 0; color: var(--qv-text); font-size: 13px; }
+.qv-empty p { font-size: 11px; line-height: 1.7; margin-bottom: 12px; }
+.qv-capture { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--qv-line); flex-shrink: 0; max-height: 42%; overflow-y: auto; }
+.qv-section-heading { display: flex; justify-content: space-between; font-size: 11px; color: var(--qv-accent); }
+.qv-section-heading small { color: var(--qv-muted); font-size: 10px; }
+.qv-input { width: 100%; min-width: 0; border: 1px solid var(--qv-line); background: var(--qv-input); color: var(--qv-text); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+.qv-textarea { min-height: 65px; resize: vertical; }
+.qv-capture-actions { display: flex; gap: 8px; }
+@media (max-height: 600px) { .qv-tags { max-height: 80px; } .quick-vault-header { min-height: 56px; padding-top: 8px; padding-bottom: 8px; } .qv-search-area { padding-top: 8px; } }
+@media (max-width: 359px) { .quick-vault-header { gap: 5px; padding-left: 9px; padding-right: 9px; } .quick-vault-brand strong { font-size: 14px; } .quick-vault-brand strong span { display: none; } .qv-add { padding: 8px; } }
+/* The search wrapper provides the focus ring; avoid a second rectangular ring. */
+html[data-theme] .quick-vault-panel .qv-search input:focus-visible { outline: none !important; }

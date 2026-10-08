@@ -43,7 +43,7 @@ function createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath, onCli
   function positionPanel() {
     const orb = orbWindow.getBounds()
     const area = screen.getDisplayNearestPoint({ x: orb.x + SIZE / 2, y: orb.y + SIZE / 2 }).workArea
-    const width = Math.min(384, area.width - 24), height = Math.min(720, area.height - 24)
+    const width = Math.min(420, area.width - 24), height = Math.min(720, area.height - 24)
     // Prefer the right side of the orb; flip left near the right screen edge.
     const right = orb.x + SIZE + 8
     const x = right + width <= area.x + area.width - 12 ? right : orb.x - width - 8

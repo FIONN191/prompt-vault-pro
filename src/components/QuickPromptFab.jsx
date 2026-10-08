@@ -4,7 +4,7 @@
 //   2. search existing prompts and copy one with a single click
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePreferences } from '../PreferencesContext.jsx'
-import { formatRelativeTime } from '../utils/storage.js'
+import './QuickPromptFab.css'
 
 const hasCJK = (s) => /[㐀-鿿]/.test(s)
 const mainTextOf = (p) => p.englishPrompt || p.chinesePrompt || p.shortPrompt || p.strongPrompt || ''
@@ -37,7 +37,20 @@ function PromptGlyph({ className }) {
 }
 
 export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenPrompt, desktop = false }) {
-  const { categories } = usePreferences()
+  const { categories, preferences, savePreferences } = usePreferences()
+  const [captureOpen, setCaptureOpen] = useState(false)
+  const [activeTag, setActiveTag] = useState(null)
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const [grid, setGrid] = useState(false)
+  const [locked, setLocked] = useState(false)
+  const searchRef = useRef(null)
+  const tags = useMemo(() => [...new Set(prompts.flatMap(p => p.tags || []))].sort((a, b) => a.localeCompare(b, 'zh-CN')), [prompts])
+  useEffect(() => { if (activeTag && !tags.includes(activeTag)) setActiveTag(null) }, [tags, activeTag])
+  const changeTheme = () => {
+    const theme = preferences.theme === 'light' ? 'minimal' : 'light'
+    if (desktop) window.desktopPrompt.requestTheme(theme)
+    else savePreferences({ ...preferences, theme })
+  }
   const [open, setOpen] = useState(desktop)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -52,7 +65,7 @@ export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenProm
   const savingRef = useRef(false)
   const close = () => desktop ? window.desktopPrompt.close() : setOpen(false)
   useEffect(() => {
-    if (desktop) return window.desktopPrompt.onFocus(() => textRef.current?.focus())
+    if (desktop) return window.desktopPrompt.onFocus(() => searchRef.current?.focus())
   }, [desktop])
 
   // global shortcut: ⌘/Ctrl+K toggles the panel, Esc closes it
@@ -74,9 +87,9 @@ export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenProm
   // focus the capture box when the panel opens
   useEffect(() => {
     if (!open) return
-    const t = setTimeout(() => textRef.current?.focus(), 60)
+    const t = setTimeout(() => (captureOpen ? textRef : searchRef).current?.focus(), 60)
     return () => clearTimeout(t)
-  }, [open])
+  }, [open, captureOpen])
 
   const results = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -103,13 +116,14 @@ export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenProm
     }
     // favorites first, then most-recently used / updated
     const recency = (p) => Math.max(time(p.lastUsedAt), time(p.updatedAt))
+    list = list.filter(p => (!favoritesOnly || p.isFavorite) && (!activeTag || p.tags.includes(activeTag)))
     return [...list]
       .sort((a, b) => {
         if (!!b.isFavorite !== !!a.isFavorite) return (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0)
         return recency(b) - recency(a)
       })
-      .slice(0, 40)
-  }, [prompts, q, categories])
+
+  }, [prompts, q, categories, favoritesOnly, activeTag])
 
   const submit = async () => {
     if (savingRef.current) return
@@ -152,10 +166,6 @@ export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenProm
     }
   }
 
-  const stop = (fn) => (e) => {
-    e.stopPropagation()
-    fn()
-  }
   const copyRow = (p) => onCopy(p, mainTextOf(p), '提示词')
 
   return (
@@ -180,148 +190,43 @@ export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenProm
           {/* click-away catcher (below the panel, above the app) */}
           <div className="fixed inset-0 z-40" onClick={close} />
 
-          <aside className={`panel-slide-in fixed right-0 top-0 bottom-0 z-50 flex ${desktop ? 'w-full' : 'w-[92vw]'} max-w-[384px] flex-col border-l border-line bg-panel/95 backdrop-blur-md shadow-[-8px_0_44px_rgba(0,0,0,0.55)]`}>
-            {/* header */}
-            <div className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
-              <div className="flex items-center gap-2 text-neon">
-                <PromptGlyph className="h-5 w-5" />
-                <span className="text-sm font-bold tracking-widest glow-text-cyan">快速提示词</span>
-              </div>
-              <button
-                onClick={close}
-                className="btn-ghost cursor-pointer rounded-md px-2 py-1 text-sm"
-                aria-label="关闭"
-              >
-                ✕
-              </button>
-            </div>
+          <aside className={`quick-vault-panel fixed z-50 flex flex-col ${desktop ? 'quick-vault-desktop inset-0' : 'quick-vault-web right-3 top-3 bottom-3'}`} aria-label="快速提示词">
+            <header className={`quick-vault-header ${desktop && !locked ? 'quick-prompt-drag-handle' : ''}`} title={desktop && !locked ? '按住标题栏拖动面板' : undefined}>
+              <span className="quick-vault-grip" aria-hidden="true">⠿</span>
+              <div className="quick-vault-brand"><strong>Prompt Vault<span>PRO</span></strong><small>快速提示词</small></div>
+              <button className="qv-icon qv-theme" onClick={changeTheme} aria-label={preferences.theme === 'light' ? '切换到深色模式' : '切换到浅色模式'} title="切换明暗主题">{preferences.theme === 'light' ? '☾' : '☀'}</button>
+              <button className="qv-primary qv-add" onClick={() => setCaptureOpen(v => !v)} aria-expanded={captureOpen}>{captureOpen ? '收起' : '+ 新增'}</button>
+              {desktop && <button className={`qv-icon ${locked ? 'is-active' : ''}`} onClick={() => setLocked(v => !v)} aria-label={locked ? '解锁面板位置' : '固定面板位置'} aria-pressed={locked} title={locked ? '解锁后可拖动' : '固定面板位置'}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/><path d={locked ? 'M8 10V7a4 4 0 0 1 8 0v3' : 'M8 10V7a4 4 0 0 1 8 0'}/></svg>
+              </button>}
+              <button onClick={close} className="qv-icon qv-close" aria-label="关闭" title="收起面板 (Esc)">×</button>
+            </header>
 
-            {/* quick capture */}
-            <div className="shrink-0 space-y-2 border-b border-line p-4">
-              <div className="text-[11px] tracking-[0.2em] text-faint">// 快速录入 NEW</div>
+            {captureOpen && <section className="qv-capture" aria-label="快速录入">
+              <div className="qv-section-heading"><span>快速录入</span><small>⌘ / Ctrl + Enter 保存</small></div>
               {saveError && <p role="alert" className="text-xs text-magenta">{saveError}</p>}
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="标题（可留空，自动生成）"
-                className="input-cyber w-full px-3 py-2 text-sm"
-              />
-              <textarea
-                ref={textRef}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                    e.preventDefault()
-                    submit()
-                  }
-                }}
-                rows={4}
-                placeholder="在这里快速输入提示词…（⌘↵ 直接存入）"
-                className="input-cyber prompt-block w-full resize-none px-3 py-2 text-sm"
-              />
-              <div className="flex items-center gap-2">
-                <select
-                  aria-label="快速录入分类"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="input-cyber min-w-0 flex-1 cursor-pointer px-2 py-2 text-xs"
-                >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.zh}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={submit}
-                  disabled={saving}
-                  className="btn-neon shrink-0 cursor-pointer whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium"
-                >
-                  {saving ? '正在保存…' : '存入素材库'}
-                </button>
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="标题（可留空，自动生成）" className="qv-input" />
+              <textarea ref={textRef} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); submit() } }} rows={3} placeholder="在这里快速输入提示词…（⌘↵ 直接存入）" className="qv-input qv-textarea" />
+              <div className="qv-capture-actions"><select aria-label="快速录入分类" value={category} onChange={e => setCategory(e.target.value)} className="qv-input">{categories.map(c => <option key={c.id} value={c.id}>{c.zh}</option>)}</select><button onClick={submit} disabled={saving} className="qv-primary">{saving ? '正在保存…' : '存入素材库'}</button></div>
+            </section>}
+
+            <div className="qv-search-area">
+              <div className="qv-search-row">
+                <div className="qv-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input ref={searchRef} value={q} onChange={e => setQ(e.target.value)} placeholder="搜索提示词或标签…" aria-label="搜索提示词或标签" />{q && <button onClick={() => { setQ(''); searchRef.current?.focus() }} aria-label="清空搜索">×</button>}</div>
+                <button className={`qv-icon qv-layout ${grid ? 'is-active' : ''}`} onClick={() => setGrid(v => !v)} aria-label={grid ? '切换列表视图' : '切换网格视图'} aria-pressed={grid} title={grid ? '列表视图' : '网格视图'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">{grid ? <path d="M4 6h16M4 12h16M4 18h16"/> : <><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></>}</svg></button>
               </div>
+              <div className="qv-tags" aria-label="标签筛选"><button className={`qv-tag ${!activeTag ? 'is-active' : ''}`} onClick={() => setActiveTag(null)} aria-pressed={!activeTag}>全部</button>{tags.map(tag => <button key={tag} className={`qv-tag ${activeTag === tag ? 'is-active' : ''}`} onClick={() => setActiveTag(current => current === tag ? null : tag)} aria-pressed={activeTag === tag}>{tag}</button>)}</div>
             </div>
 
-            {/* search + list */}
-            <div className="shrink-0 px-4 pb-2 pt-3">
-              <div className="text-[11px] tracking-[0.2em] text-faint mb-2">// 调用已有 LIBRARY</div>
-              <div className="relative">
-                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-faint">
-                  ⌕
-                </span>
-                <input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="搜索标题 / 内容 / 标签，一键复制…"
-                  className="input-cyber w-full py-2 pl-8 pr-3 text-sm"
-                />
-              </div>
+            <div className="qv-list-heading"><span>{favoritesOnly ? '我的收藏' : activeTag || '全部提示词'}<b>{results.length}</b></span><small>点击卡片即可复制</small></div>
+            <div className={`qv-results ${grid ? 'is-grid' : ''}`}>
+              {results.length === 0 ? <div className="qv-empty"><span>⌕</span><strong>{prompts.length ? '没有匹配的提示词' : '收藏你的第一条灵感'}</strong><p>{prompts.length ? '换个关键词，或调整标签和收藏筛选。' : '点击顶部「新增」，把常用提示词放在手边。'}</p>{prompts.length > 0 && <button className="qv-tag" onClick={() => { setQ(''); setActiveTag(null); setFavoritesOnly(false) }}>清空筛选</button>}</div> : results.map(p => <article className="qv-card" key={p.id}>
+                <button className="qv-card-copy" onClick={() => copyRow(p)} title="点击复制主提示词" aria-label={`复制 ${p.title}`}><span className="qv-card-title">{p.isFavorite && <span className="qv-star">☆</span>}{p.title}</span><span className="qv-card-meta">{(p.tags.length ? p.tags.slice(0, 2) : [categories.find(c => c.id === p.category)?.zh || p.category]).map(tag => <span className="qv-badge" key={tag}>{tag}</span>)}</span>{grid && <span className="qv-card-description">{p.description || mainTextOf(p)}</span>}</button>
+                {onOpenPrompt && <button className="qv-detail" onClick={() => { onOpenPrompt(p); close() }} title="查看详情" aria-label={`查看详情 ${p.title}`}>↗</button>}
+              </article>)}
             </div>
 
-            <div className="flex-1 space-y-1.5 overflow-y-auto px-3 pb-3">
-              {results.length === 0 ? (
-                <div className="px-2 py-10 text-center text-xs text-faint">
-                  {q.trim() ? '没有匹配的提示词' : '素材库还是空的'}
-                </div>
-              ) : (
-                results.map((p) => (
-                  <div
-                    key={p.id}
-                    onClick={() => copyRow(p)}
-                    className="neon-card group flex cursor-pointer items-start gap-2 p-3"
-                    title="点击复制主提示词"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        {p.isFavorite && <span className="text-xs text-amber">★</span>}
-                        <h4 className="truncate text-sm font-medium text-ink transition-colors group-hover:text-neon">
-                          {p.title}
-                        </h4>
-                      </div>
-                      <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-dim">
-                        {p.description || mainTextOf(p)}
-                      </p>
-                      <div className="mt-1 flex items-center gap-1.5">
-                        <span className="rounded border border-violet/40 px-1.5 py-0.5 text-[10px] text-violet">
-                          {p.platform}
-                        </span>
-                        {p.lastUsedAt && (
-                          <span className="text-[10px] text-faint">用于 {formatRelativeTime(p.lastUsedAt)}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 flex-col gap-1">
-                      <button
-                        onClick={stop(() => copyRow(p))}
-                        className="btn-neon cursor-pointer rounded px-2 py-1 text-[11px]"
-                        title="复制"
-                      >
-                        ⧉
-                      </button>
-                      {onOpenPrompt && (
-                        <button
-                          onClick={stop(() => {
-                            onOpenPrompt(p)
-                            close()
-                          })}
-                          className="btn-ghost cursor-pointer rounded px-2 py-1 text-[11px]"
-                          title="查看详情"
-                        >
-                          ↗
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* footer hint */}
-            <div className="flex shrink-0 items-center justify-between border-t border-line px-4 py-2 text-[10px] text-faint">
-              <span>{desktop ? '⌘/Ctrl+Shift+K · Esc 收起' : '⌘K 打开 · Esc 关闭'}</span>
-              <span>⌘↵ 存入素材库</span>
-            </div>
+            <footer className="qv-footer"><button className={`qv-favorites ${favoritesOnly ? 'is-active' : ''}`} onClick={() => setFavoritesOnly(v => !v)} aria-pressed={favoritesOnly}><span>{favoritesOnly ? '★' : '☆'}</span> 收藏库 <small>{prompts.filter(p => p.isFavorite).length}</small></button><div className="qv-footer-meta"><span>{desktop ? '⌘/Ctrl + Shift + K' : '⌘/Ctrl + K'}<span className="qv-dot">·</span>Esc 收起</span><span>本地保存</span></div></footer>
           </aside>
         </>
       )}

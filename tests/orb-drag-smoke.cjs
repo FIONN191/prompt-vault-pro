@@ -53,7 +53,7 @@ async function until(check) {
     await orb.screenshot({ path: path.join(profile, 'orb-unlocked.png') })
     mouse(center(moved))
     await until(panelVisible)
-    await panel.getByPlaceholder('标题（可留空，自动生成）').waitFor()
+    await panel.getByLabel('搜索提示词或标签').waitFor()
     const panelBounds = await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(win => win.webContents.getURL().includes('desktop-panel')).getBounds())
     assert(panelBounds.x >= area.x && panelBounds.x + panelBounds.width <= area.x + area.width)
     assert(panelBounds.y >= area.y && panelBounds.y + panelBounds.height <= area.y + area.height)

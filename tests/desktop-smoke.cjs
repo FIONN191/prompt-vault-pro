@@ -31,6 +31,7 @@ async function until(check) {
     const panel = desktop.windows().find(win => win.url().includes('desktop-panel'))
     for (const win of desktop.windows()) win.on('pageerror', error => errors.push(error.message))
     await orb.getByRole('button', { name: '打开快速提示词', exact: true }).click()
+    await panel.getByRole('button', { name: '+ 新增', exact: true }).click()
     await panel.getByPlaceholder('标题（可留空，自动生成）').waitFor()
     const state = await desktop.evaluate(({ BrowserWindow, globalShortcut }) => ({
       windows: BrowserWindow.getAllWindows().map(win => ({ title: win.getTitle(), top: win.isAlwaysOnTop(), visible: win.isVisible() })),
@@ -55,9 +56,9 @@ async function until(check) {
     await panel.locator('textarea').fill('桌面悬浮球测试：隐藏主窗口也能保存。')
     await panel.getByRole('button', { name: '存入素材库', exact: true }).click()
     await panel.getByText('已存入素材库', { exact: true }).waitFor()
-    await panel.getByPlaceholder('搜索标题 / 内容 / 标签，一键复制…').fill('Desktop smoke test')
-    await panel.getByRole('heading', { name: 'Desktop smoke test' }).waitFor()
-    await panel.getByTitle('复制', { exact: true }).click()
+    await panel.getByLabel('搜索提示词或标签').fill('Desktop smoke test')
+    await panel.getByRole('button', { name: '复制 Desktop smoke test', exact: true }).waitFor()
+    await panel.getByRole('button', { name: '复制 Desktop smoke test', exact: true }).click()
     await panel.getByText('已复制，切回目标应用粘贴即可', { exact: true }).waitFor()
     assert.equal(await desktop.evaluate(({ clipboard }) => clipboard.readText()), '桌面悬浮球测试：隐藏主窗口也能保存。')
     const stored = await main.evaluate(() => JSON.parse(localStorage.getItem('prompt_vault_pro_prompts_v1')))
@@ -74,7 +75,7 @@ async function until(check) {
     await main.getByRole('button', { name: '仪表盘', exact: true }).first().waitFor()
     assert((await main.evaluate(() => JSON.parse(localStorage.getItem('prompt_vault_pro_prompts_v1')))).some(prompt => prompt.title === 'Desktop smoke test'))
     await orb.getByRole('button', { name: '打开快速提示词', exact: true }).click()
-    await panel.getByRole('heading', { name: 'Desktop smoke test' }).waitFor()
+    await panel.getByRole('button', { name: '复制 Desktop smoke test', exact: true }).waitFor()
     // A failed write must not clear the draft or publish a phantom prompt.
     await main.evaluate(() => { window.originalStorageSet = Storage.prototype.setItem; Storage.prototype.setItem = () => { throw new DOMException('test quota', 'QuotaExceededError') } })
     await panel.locator('textarea').fill('保存失败应保留草稿')

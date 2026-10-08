@@ -7,7 +7,10 @@
 - 数据全部存在浏览器 / 应用的 localStorage 里
 - 桌面版：Electron 打包，Mac（dmg）+ Windows（exe）双端
 
-## 当前版本：v1.0.8
+## 当前版本：v1.0.9
+
+- 快速面板采用搜索优先布局：胶囊标签筛选、紧凑列表/网格、收藏库、按需展开的快速录入，支持明暗切换。
+- 快速提示词桌面面板支持按住标题栏自由拖动，可临时固定面板位置，关闭、输入与复制操作保持可用。
 
 - 左侧「+ 新增分类」支持就地输入，回车创建，Esc 取消；创建后自动进入新分类。
 - 「管理分类」支持名称、颜色、说明、排序，以及分类栏标题、收藏入口和数量显示设置。
@@ -51,7 +54,7 @@ npx electron-builder --mac --config.directories.output=release  # 在 macOS 上�
 npx electron-builder --win --config.directories.output=release  # 建议在 Windows 上构建
 ```
 
-macOS 跨平台生成 Windows 安装包还需要可用的 Wine；Apple Silicon 上的 x86_64 Wine 需要 Rosetta 2。当前 v1.0.8 Mac 包已在维护者本机验证，Windows v1.0.8 安装包尚未生成。本次仓库同步仅发布源码，不表示已发布 GitHub Release 安装包。
+macOS 跨平台生成 Windows 安装包还需要可用的 Wine；Apple Silicon 上的 x86_64 Wine 需要 Rosetta 2。v1.0.9 已生成 Mac 和 Windows 安装包；Mac 交互在本机验证，Windows 仍需真机验证。源码同步和本地安装包不代表已发布 GitHub Release。
 
 产物在外接盘 `/Volumes/SN580 1TB Media/开发/PromptVaultPro/release/`（内置盘空间不足，打包输出和临时目录都指向外接盘，打包时必须挂载外接盘）：
 
@@ -162,6 +165,7 @@ Electron 交互测试需要可用的 Playwright 模块（如通过 `NODE_PATH` �
 ```bash
 node tests/sidebar-category-smoke.cjs
 node tests/categories-theme-smoke.cjs
+node tests/quick-panel-smoke.cjs  # macOS 原生拖动、固定、搜索、标签、收藏、录入和主题同步
 ```
 
 项目仓库为 [FIONN191/prompt-vault-pro](https://github.com/FIONN191/prompt-vault-pro)。每次更新完成并验证后，将相关改动提交并推送到 `main`；个人提示词数据、密钥、依赖和构建产物不进入源码提交。

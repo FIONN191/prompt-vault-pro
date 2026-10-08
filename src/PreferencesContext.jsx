@@ -9,6 +9,13 @@ export function PreferencesProvider({ secondary = false, children }) {
     persistPreferences(value)
     setPreferences(value)
   }, [])
+  useEffect(() => {
+    if (secondary || !window.desktopPrompt) return
+    return window.desktopPrompt.onThemeRequest(theme => {
+      try { savePreferences({ ...preferences, theme }) }
+      catch (error) { console.warn('主题保存失败', error) }
+    })
+  }, [secondary, preferences, savePreferences])
   useLayoutEffect(() => { applyTheme(preferences.theme) }, [preferences.theme])
   useEffect(() => {
     const bridge = window.desktopPrompt

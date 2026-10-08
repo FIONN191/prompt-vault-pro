@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('desktopPrompt', {
   endOrbDrag: (id, cancelled = false) => ipcRenderer.send('desktop:orb-drag-end', id, cancelled),
   copyText: text => ipcRenderer.invoke('desktop:copy', text),
   ready: () => ipcRenderer.send('desktop:ready'),
+  requestTheme: theme => ipcRenderer.send('desktop:theme-request', theme),
+  onThemeRequest: cb => listen('desktop:theme-request', cb),
   publishPreferences: value => ipcRenderer.send('desktop:preferences', value),
   onPreferences: cb => listen('desktop:preferences', cb),
   preferencesReady: () => ipcRenderer.send('desktop:preferences-ready'),

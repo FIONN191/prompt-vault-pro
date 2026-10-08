@@ -43,7 +43,7 @@ else {
   app.whenReady().then(() => {
     mainWindow = new BrowserWindow({ width: 1360, height: 860, minWidth: 900, minHeight: 600, backgroundColor: '#05060c', title: 'Prompt Vault Pro', autoHideMenuBar: true, webPreferences })
     orbWindow = floatWindow({ width: 72, height: 72, transparent: true, hasShadow: false, title: 'Prompt Vault 悬浮球' })
-    panelWindow = floatWindow({ width: 384, height: 720, backgroundColor: '#0a0e1a', title: '快速提示词' })
+    panelWindow = floatWindow({ width: 420, height: 720, backgroundColor: '#0a0e1a', title: '快速提示词' })
     floatingOrb = createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath: path.join(app.getPath('userData'), 'floating-orb.json'), onClick: togglePanel })
     floatingOrb.restore()
     mainWindow.on('close', event => { if (!quitting) { event.preventDefault(); mainWindow.hide() } })
@@ -74,6 +74,9 @@ else {
       mainWindow.setBackgroundColor(background)
       panelWindow.setBackgroundColor(background)
       for (const win of [orbWindow, panelWindow]) win.webContents.send('desktop:preferences', value)
+    })
+    ipcMain.on('desktop:theme-request', (event, theme) => {
+      if (trusted(event, panelWindow) && ['minimal', 'light', 'neon'].includes(theme)) mainWindow.webContents.send('desktop:theme-request', theme)
     })
     ipcMain.on('desktop:preferences-ready', event => {
       if ((trusted(event, panelWindow) || trusted(event, orbWindow)) && preferences) event.sender.send('desktop:preferences', preferences)

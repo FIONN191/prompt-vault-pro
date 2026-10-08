@@ -42,6 +42,7 @@ async function ready(desktop) {
     const customId = settings.categories.find(c => c.zh === '品牌文案').id
     assert.deepEqual(await main.evaluate(() => JSON.parse(localStorage.getItem('prompt_vault_pro_prompts_v1'))), original)
     await orb.getByRole('button', { name: '打开快速提示词', exact: true }).click()
+    await panel.getByRole('button', { name: '+ 新增', exact: true }).click()
     await panel.getByLabel('快速录入分类').selectOption(customId)
     await panel.getByPlaceholder('标题（可留空，自动生成）').fill('自定义分类实测')
     await panel.locator('textarea').fill('为品牌设计一句简洁文案')
