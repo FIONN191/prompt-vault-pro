@@ -5,6 +5,7 @@ const listen = (channel, callback) => {
   return () => ipcRenderer.removeListener(channel, handler)
 }
 contextBridge.exposeInMainWorld('desktopPrompt', {
+  manageData: (action, value) => ipcRenderer.invoke('desktop:data', action, value),
   toggle: () => ipcRenderer.send('desktop:toggle'),
   close: () => ipcRenderer.send('desktop:close'),
   openMain: id => ipcRenderer.send('desktop:main', id),

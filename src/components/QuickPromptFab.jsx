@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePreferences } from '../PreferencesContext.jsx'
 import './QuickPromptFab.css'
+import QuickPanelData from './QuickPanelData.jsx'
 
 const hasCJK = (s) => /[㐀-鿿]/.test(s)
 const mainTextOf = (p) => p.englishPrompt || p.chinesePrompt || p.shortPrompt || p.strongPrompt || ''
@@ -36,12 +37,18 @@ function PromptGlyph({ className }) {
   )
 }
 
-export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenPrompt, desktop = false }) {
+export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenPrompt, onCreateCategory, onManageData, desktop = false }) {
   const { categories, preferences, savePreferences } = usePreferences()
   const [captureOpen, setCaptureOpen] = useState(false)
   const [activeTag, setActiveTag] = useState(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [grid, setGrid] = useState(false)
+  const [dataOpen, setDataOpen] = useState(false)
+  const [categoryOpen, setCategoryOpen] = useState(false)
+  const [categoryName, setCategoryName] = useState('')
+  const [categoryError, setCategoryError] = useState('')
+  const [categoryBusy, setCategoryBusy] = useState(false)
+  const pendingCategory = useRef(null)
   const [locked, setLocked] = useState(false)
   const searchRef = useRef(null)
   const tags = useMemo(() => [...new Set(prompts.flatMap(p => p.tags || []))].sort((a, b) => a.localeCompare(b, 'zh-CN')), [prompts])
@@ -58,6 +65,7 @@ export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenProm
   const [text, setText] = useState('')
   const [category, setCategory] = useState(categories[0].id)
   useEffect(() => {
+    if (pendingCategory.current && categories.some(c => c.id === pendingCategory.current)) { setCategory(pendingCategory.current); pendingCategory.current = null; return }
     if (!categories.some(c => c.id === category)) setCategory(categories[0].id)
   }, [categories, category])
   const [q, setQ] = useState('')
@@ -125,6 +133,16 @@ export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenProm
 
   }, [prompts, q, categories, favoritesOnly, activeTag])
 
+  const createCategory = async () => {
+    if (categoryBusy) return
+    setCategoryError(''); setCategoryBusy(true)
+    try {
+      const created = await onCreateCategory(categoryName)
+      pendingCategory.current = created.id
+      setCategory(created.id); setCategoryName(''); setCategoryOpen(false)
+    } catch (e) { setCategoryError(e.message) }
+    finally { setCategoryBusy(false) }
+  }
   const submit = async () => {
     if (savingRef.current) return
     const body = text.trim()
@@ -190,12 +208,12 @@ export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenProm
           {/* click-away catcher (below the panel, above the app) */}
           <div className="fixed inset-0 z-40" onClick={close} />
 
-          <aside className={`quick-vault-panel fixed z-50 flex flex-col ${desktop ? 'quick-vault-desktop inset-0' : 'quick-vault-web right-3 top-3 bottom-3'}`} aria-label="快速提示词">
+          <aside className={`quick-vault-panel fixed z-50 flex flex-col ${desktop ? 'quick-vault-desktop inset-0' : 'quick-vault-web right-3 top-3 bottom-3'} ${captureOpen || dataOpen ? 'qv-tools-open' : ''}`} aria-label="快速提示词">
             <header className={`quick-vault-header ${desktop && !locked ? 'quick-prompt-drag-handle' : ''}`} title={desktop && !locked ? '按住标题栏拖动面板' : undefined}>
               <span className="quick-vault-grip" aria-hidden="true">⠿</span>
               <div className="quick-vault-brand"><strong>Prompt Vault<span>PRO</span></strong><small>快速提示词</small></div>
               <button className="qv-icon qv-theme" onClick={changeTheme} aria-label={preferences.theme === 'light' ? '切换到深色模式' : '切换到浅色模式'} title="切换明暗主题">{preferences.theme === 'light' ? '☾' : '☀'}</button>
-              <button className="qv-primary qv-add" onClick={() => setCaptureOpen(v => !v)} aria-expanded={captureOpen}>{captureOpen ? '收起' : '+ 新增'}</button>
+              <button className="qv-primary qv-add" onClick={() => { setCaptureOpen(v => !v); setDataOpen(false) }} aria-expanded={captureOpen}>{captureOpen ? '收起' : '+ 新增'}</button>
               {desktop && <button className={`qv-icon ${locked ? 'is-active' : ''}`} onClick={() => setLocked(v => !v)} aria-label={locked ? '解锁面板位置' : '固定面板位置'} aria-pressed={locked} title={locked ? '解锁后可拖动' : '固定面板位置'}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/><path d={locked ? 'M8 10V7a4 4 0 0 1 8 0v3' : 'M8 10V7a4 4 0 0 1 8 0'}/></svg>
               </button>}
@@ -208,8 +226,12 @@ export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenProm
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="标题（可留空，自动生成）" className="qv-input" />
               <textarea ref={textRef} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); submit() } }} rows={3} placeholder="在这里快速输入提示词…（⌘↵ 直接存入）" className="qv-input qv-textarea" />
               <div className="qv-capture-actions"><select aria-label="快速录入分类" value={category} onChange={e => setCategory(e.target.value)} className="qv-input">{categories.map(c => <option key={c.id} value={c.id}>{c.zh}</option>)}</select><button onClick={submit} disabled={saving} className="qv-primary">{saving ? '正在保存…' : '存入素材库'}</button></div>
+              {onCreateCategory && <button className="qv-new-category" onClick={() => setCategoryOpen(v => !v)} aria-expanded={categoryOpen}>＋ 新建分类</button>}
+              {categoryOpen && <form className="qv-category-form" onSubmit={e => { e.preventDefault(); createCategory() }}><input autoFocus className="qv-input" aria-label="新分类名称" placeholder="分类名称" maxLength={40} value={categoryName} onChange={e => setCategoryName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && e.nativeEvent.isComposing) e.preventDefault() }} /><button className="qv-primary" disabled={categoryBusy || !categoryName.trim()}>{categoryBusy ? '创建中…' : '创建'}</button></form>}
+              {categoryError && <p role="alert">{categoryError}</p>}
             </section>}
 
+            {dataOpen && onManageData && <QuickPanelData onManageData={onManageData} />}
             <div className="qv-search-area">
               <div className="qv-search-row">
                 <div className="qv-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input ref={searchRef} value={q} onChange={e => setQ(e.target.value)} placeholder="搜索提示词或标签…" aria-label="搜索提示词或标签" />{q && <button onClick={() => { setQ(''); searchRef.current?.focus() }} aria-label="清空搜索">×</button>}</div>
@@ -226,7 +248,7 @@ export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenProm
               </article>)}
             </div>
 
-            <footer className="qv-footer"><button className={`qv-favorites ${favoritesOnly ? 'is-active' : ''}`} onClick={() => setFavoritesOnly(v => !v)} aria-pressed={favoritesOnly}><span>{favoritesOnly ? '★' : '☆'}</span> 收藏库 <small>{prompts.filter(p => p.isFavorite).length}</small></button><div className="qv-footer-meta"><span>{desktop ? '⌘/Ctrl + Shift + K' : '⌘/Ctrl + K'}<span className="qv-dot">·</span>Esc 收起</span><span>本地保存</span></div></footer>
+            <footer className="qv-footer"><button className={`qv-favorites ${favoritesOnly ? 'is-active' : ''}`} onClick={() => setFavoritesOnly(v => !v)} aria-pressed={favoritesOnly}><span>{favoritesOnly ? '★' : '☆'}</span> 收藏库 <small>{prompts.filter(p => p.isFavorite).length}</small></button><div className="qv-footer-meta"><span>{desktop ? '⌘/Ctrl + Shift + K' : '⌘/Ctrl + K'}<span className="qv-dot">·</span>Esc 收起</span><span>{onManageData ? <button onClick={() => { setDataOpen(v => !v); setCaptureOpen(false) }} aria-expanded={dataOpen}>⚙ 提示词数据</button> : '本地保存'}</span></div><span className="qv-resize-hint" title="拖动窗口边缘调整大小" aria-hidden="true">◢</span></footer>
           </aside>
         </>
       )}

@@ -7,7 +7,13 @@
 - 数据全部存在浏览器 / 应用的 localStorage 里
 - 桌面版：Electron 打包，Mac（dmg）+ Windows（exe）双端
 
-## 当前版本：v1.0.9
+## 当前版本：v1.0.10
+
+- 快速面板底部「提示词数据」提供本地 JSON 导出/导入、GitHub Secret Gist 拉取/上传合并。
+- 「新增 → 新建分类」直接创建并选中分类，与主窗口同步。
+- 桌面面板支持拖动窗口边缘缩放，记住尺寸；网页版可拖动面板右下角调整。
+- Gist 首次使用：打开「提示词数据 → Gist 设置」，填写具有 Gists 读写权限的 GitHub 令牌。Gist ID 留空时，首次上传创建 Secret Gist；另一台设备填入同一 ID 即可拉取。令牌由 Electron safeStorage 加密保存于本机，不进入备份。
+- Secret Gist 是不公开列出的链接备份，并非访问权限隔离；持有链接的人可以读取。合并按 ID 去重，保留较新的 updatedAt，时间相同保留操作发起端本地内容；分类取并集，同 ID 保留本地属性，不同步删除。先拉取再上传可使两端收敛。
 
 - 快速面板采用搜索优先布局：胶囊标签筛选、紧凑列表/网格、收藏库、按需展开的快速录入，支持明暗切换。
 - 快速提示词桌面面板支持按住标题栏自由拖动，可临时固定面板位置，关闭、输入与复制操作保持可用。
@@ -54,7 +60,7 @@ npx electron-builder --mac --config.directories.output=release  # 在 macOS 上�
 npx electron-builder --win --config.directories.output=release  # 建议在 Windows 上构建
 ```
 
-macOS 跨平台生成 Windows 安装包还需要可用的 Wine；Apple Silicon 上的 x86_64 Wine 需要 Rosetta 2。v1.0.9 已生成 Mac 和 Windows 安装包；Mac 交互在本机验证，Windows 仍需真机验证。源码同步和本地安装包不代表已发布 GitHub Release。
+macOS 跨平台生成 Windows 安装包还需要可用的 Wine；Apple Silicon 上的 x86_64 Wine 需要 Rosetta 2。v1.0.10 已生成 Mac 和 Windows 安装包；Mac 交互在本机验证，Windows 仍需真机验证。源码同步和本地安装包不代表已发布 GitHub Release。
 
 产物在外接盘 `/Volumes/SN580 1TB Media/开发/PromptVaultPro/release/`（内置盘空间不足，打包输出和临时目录都指向外接盘，打包时必须挂载外接盘）：
 

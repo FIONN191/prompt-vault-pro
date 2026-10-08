@@ -1,5 +1,8 @@
-const { app, BrowserWindow, shell, ipcMain, screen, globalShortcut, Menu, clipboard } = require('electron')
+const { app, BrowserWindow, shell, ipcMain, screen, globalShortcut, Menu, clipboard, dialog, safeStorage, net } = require('electron')
 const path = require('path')
+const fsp = require('node:fs/promises')
+const { createGistBackup } = require('./gist-backup.cjs')
+const { parsePayload } = require('./prompt-data.cjs')
 const { createFloatingOrb } = require('./floating-orb.cjs')
 const DEV_URL = process.env.VITE_DEV_SERVER_URL
 let mainWindow, orbWindow, panelWindow, floatingOrb, quitting = false, snapshot = null
@@ -15,7 +18,7 @@ function load(win, hash = '') {
   win.webContents.on('will-navigate', event => event.preventDefault())
 }
 function floatWindow(options) {
-  const win = new BrowserWindow({ ...options, show: false, frame: false, resizable: false, minimizable: false, maximizable: false, skipTaskbar: true, alwaysOnTop: true, webPreferences })
+  const win = new BrowserWindow({ ...options, show: false, frame: false, resizable: options.resizable === true, minimizable: false, maximizable: false, skipTaskbar: true, alwaysOnTop: true, webPreferences })
   win.setAlwaysOnTop(true, 'floating')
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   return win
@@ -43,7 +46,38 @@ else {
   app.whenReady().then(() => {
     mainWindow = new BrowserWindow({ width: 1360, height: 860, minWidth: 900, minHeight: 600, backgroundColor: '#05060c', title: 'Prompt Vault Pro', autoHideMenuBar: true, webPreferences })
     orbWindow = floatWindow({ width: 72, height: 72, transparent: true, hasShadow: false, title: 'Prompt Vault 悬浮球' })
-    panelWindow = floatWindow({ width: 420, height: 720, backgroundColor: '#0a0e1a', title: '快速提示词' })
+    panelWindow = floatWindow({ width: 420, height: 720, minWidth: 360, minHeight: 480, resizable: true, backgroundColor: '#0a0e1a', title: '快速提示词' })
+    const gist = createGistBackup({ settingsPath: path.join(app.getPath('userData'), 'gist-backup.json'), safeStorage, fetch: (...args) => net.fetch(...args) })
+    let dataBusy = false
+    ipcMain.handle('desktop:data', async (event, action, value) => {
+      if (!trusted(event, panelWindow)) return { ok: false, error: '无权操作' }
+      if (dataBusy) return { ok: false, error: '正在处理上一个数据操作，请稍候' }
+      dataBusy = true
+      try {
+        let data
+        const payload = () => ({ app: 'prompt-vault-pro', version: 2, exportedAt: new Date().toISOString(), prompts: snapshot || [], preferences })
+        if (action === 'status') data = await gist.status()
+        else if (action === 'configure') data = await gist.configure(value || {})
+        else if (action === 'pull') data = await gist.pull()
+        else if (action === 'upload') {
+          if (!snapshot || !preferences) throw new Error('提示词库尚未连接')
+          data = await gist.upload(payload())
+        } else if (action === 'export') {
+          if (!snapshot || !preferences) throw new Error('提示词库尚未连接')
+          const result = await dialog.showSaveDialog(panelWindow, { defaultPath: `prompt-vault-${new Date().toISOString().slice(0, 10)}.json`, filters: [{ name: 'JSON', extensions: ['json'] }] })
+          if (result.canceled) return { ok: true, cancelled: true }
+          await fsp.writeFile(result.filePath, JSON.stringify(payload(), null, 2), 'utf8')
+        } else if (action === 'import') {
+          const result = await dialog.showOpenDialog(panelWindow, { properties: ['openFile'], filters: [{ name: 'JSON', extensions: ['json'] }] })
+          if (result.canceled) return { ok: true, cancelled: true }
+          const filename = result.filePaths[0]
+          if ((await fsp.stat(filename)).size > 20 * 1024 * 1024) throw new Error('文件超过 20 MB')
+          data = parsePayload(await fsp.readFile(filename, 'utf8'))
+        } else throw new Error('未知操作')
+        return { ok: true, data }
+      } catch (error) { return { ok: false, error: error.message || '操作失败' } }
+      finally { dataBusy = false }
+    })
     floatingOrb = createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath: path.join(app.getPath('userData'), 'floating-orb.json'), onClick: togglePanel })
     floatingOrb.restore()
     mainWindow.on('close', event => { if (!quitting) { event.preventDefault(); mainWindow.hide() } })
@@ -82,7 +116,7 @@ else {
       if ((trusted(event, panelWindow) || trusted(event, orbWindow)) && preferences) event.sender.send('desktop:preferences', preferences)
     })
     ipcMain.on('desktop:command', (event, command) => {
-      if (trusted(event, panelWindow) && command && ['add', 'copy'].includes(command.type)) mainWindow.webContents.send('desktop:command', command)
+      if (trusted(event, panelWindow) && command && ['add', 'copy', 'category', 'import'].includes(command.type)) mainWindow.webContents.send('desktop:command', command)
     })
     ipcMain.on('desktop:result', (event, result) => { if (trusted(event, mainWindow)) panelWindow.webContents.send('desktop:result', result) })
     ipcMain.handle('desktop:copy', (event, text) => {

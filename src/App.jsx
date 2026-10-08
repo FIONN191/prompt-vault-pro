@@ -203,8 +203,31 @@ export default function App() {
   }
 
   // The main renderer remains the sole writer, even when its window is hidden.
+  const quickCreateCategory = name => {
+    const zh = String(name || '').trim()
+    if (!zh || zh.length > 40) throw new Error('分类名称需要 1–40 个字符')
+    if (preferences.categories.some(c => c.zh.toLocaleLowerCase() === zh.toLocaleLowerCase())) throw new Error('已有同名分类')
+    const created = { id: generateId(), zh, color: '#a3a3a3', description: '' }
+    savePreferences({ ...preferences, categories: [...preferences.categories, created] })
+    return created
+  }
+  const quickImport = payload => {
+    const parsed = importWorkspace(JSON.stringify(payload), [], preferences)
+    const map = new Map(loadPrompts().map(p => [p.id, p]))
+    let added = 0, updated = 0
+    for (const p of parsed.prompts) {
+      const old = map.get(p.id)
+      if (!old) { map.set(p.id, p); added++ }
+      else if ((Date.parse(p.updatedAt) || 0) > (Date.parse(old.updatedAt) || 0)) { map.set(p.id, p); updated++ }
+    }
+    const merged = [...map.values()]
+    const next = ensurePromptCategories(parsed.preferences, merged)
+    persistWorkspace(merged, next)
+    setPrompts(merged); setPreferences(next)
+    return { added, updated }
+  }
   const desktopHandlers = useRef(null)
-  desktopHandlers.current = { quickAddPrompt, copyPromptText }
+  desktopHandlers.current = { quickAddPrompt, copyPromptText, quickCreateCategory, quickImport }
   useEffect(() => {
     window.desktopPrompt?.publish(prompts)
   }, [prompts])
@@ -214,8 +237,10 @@ export default function App() {
     const detail = bridge.onDetail(id => setDetailId(id))
     const command = bridge.onCommand(async request => {
       try {
-        let ok = false
-        if (request.type === 'add' && request.form &&
+        let ok = false, data
+        if (request.type === 'category') { data = desktopHandlers.current.quickCreateCategory(request.name); ok = true }
+        else if (request.type === 'import') { data = desktopHandlers.current.quickImport(request.payload); ok = true }
+        else if (request.type === 'add' && request.form &&
           (request.form.chinesePrompt?.trim() || request.form.englishPrompt?.trim())) {
           ok = desktopHandlers.current.quickAddPrompt(request.form)
         } else if (request.type === 'copy') {
@@ -225,9 +250,9 @@ export default function App() {
             if (text) ok = await desktopHandlers.current.copyPromptText(prompt, text, '提示词')
           }
         }
-        bridge.result({ requestId: request.requestId, ok: !!ok })
+        bridge.result({ requestId: request.requestId, ok: !!ok, data })
       } catch (error) {
-        bridge.result({ requestId: request.requestId, ok: false })
+        bridge.result({ requestId: request.requestId, ok: false, error: error.message })
       }
     })
     return () => { detail(); command() }
@@ -486,6 +511,7 @@ export default function App() {
       {/* global floating quick-prompt dock */}
       {!window.desktopPrompt && <QuickPromptFab
         prompts={prompts}
+        onCreateCategory={quickCreateCategory}
         onQuickAdd={quickAddPrompt}
         onCopy={copyPromptText}
         onOpenPrompt={(p) => setDetailId(p.id)}

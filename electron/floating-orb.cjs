@@ -7,10 +7,11 @@ const validPoint = point => point && [point.x, point.y].every(value => Number.is
 
 // Coordinates are Electron screen DIPs, including on mixed-scale displays.
 function createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath, onClick }) {
-  let locked = false, position = null, drag = null, persistenceError = false
+  let locked = false, position = null, drag = null, persistenceError = false, panelSize = { width: 420, height: 720 }
   try {
     const saved = JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
     locked = saved.locked === true
+    if (Number.isFinite(saved.panelSize?.width) && Number.isFinite(saved.panelSize?.height)) panelSize = { width: Math.max(360, saved.panelSize.width), height: Math.max(480, saved.panelSize.height) }
     if (validPoint(saved.position)) position = saved.position
   } catch (error) {
     if (error.code !== 'ENOENT') console.warn('无法读取悬浮球设置，将使用默认位置', error.message)
@@ -20,7 +21,7 @@ function createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath, onCli
   const publish = () => orbWindow.webContents.send('desktop:orb-state', getState())
   function persist() {
     try {
-      fs.writeFileSync(settingsPath + '.tmp', JSON.stringify({ version: 1, locked, position }), 'utf8')
+      fs.writeFileSync(settingsPath + '.tmp', JSON.stringify({ version: 1, locked, position, panelSize }), 'utf8')
       fs.renameSync(settingsPath + '.tmp', settingsPath)
       persistenceError = false
     } catch (error) {
@@ -43,7 +44,7 @@ function createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath, onCli
   function positionPanel() {
     const orb = orbWindow.getBounds()
     const area = screen.getDisplayNearestPoint({ x: orb.x + SIZE / 2, y: orb.y + SIZE / 2 }).workArea
-    const width = Math.min(420, area.width - 24), height = Math.min(720, area.height - 24)
+    const width = Math.min(panelSize.width, area.width - 24), height = Math.min(panelSize.height, area.height - 24)
     // Prefer the right side of the orb; flip left near the right screen edge.
     const right = orb.x + SIZE + 8
     const x = right + width <= area.x + area.width - 12 ? right : orb.x - width - 8
@@ -53,6 +54,17 @@ function createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath, onCli
       width, height,
     }, false)
   }
+  let resizeTimer
+  panelWindow.on('resize', () => {
+    clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(() => {
+      if (panelWindow.isDestroyed()) return
+      const { width, height } = panelWindow.getBounds()
+      panelSize = { width, height }
+      persist()
+    }, 250)
+  })
+  panelWindow.on('closed', () => clearTimeout(resizeTimer))
   function cancelDrag() {
     if (!drag) return
     const moved = drag.moved
