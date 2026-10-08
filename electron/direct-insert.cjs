@@ -2,7 +2,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawn } = require('node:child_process')
 const { createInterface } = require('node:readline')
-function createDirectInsert({ settingsPath, nativeDir, clipboard, hide, restore, platform = process.platform }) {
+function createDirectInsert({ settingsPath, nativeDir, clipboard, prepare, restore, platform = process.platform }) {
  let enabled = false, child = null, busy = false, sequence = 0, stopped = false
  const pending = new Map()
  try { enabled = JSON.parse(fs.readFileSync(settingsPath, 'utf8')).enabled === true } catch {}
@@ -68,7 +68,7 @@ function createDirectInsert({ settingsPath, nativeDir, clipboard, hide, restore,
    if(!state.permitted)return {ok:false,error:'系统尚未授予当前应用辅助功能权限。若已开启，请关闭再开启 PromptVaultPro 权限，然后点重新检查；提示词已复制'}
    if(!state.target)return {ok:false,error:'未识别到目标输入框，请先点击目标输入框再打开面板；提示词已复制'}
    clipboard.writeText(text)
-   hide()
+   prepare()
    const result=await request('insert')
    if(!result.ok)restore()
    return result

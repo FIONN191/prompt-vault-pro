@@ -52,7 +52,7 @@ else {
       settingsPath: path.join(app.getPath('userData'), 'direct-insert.json'),
       nativeDir: path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'native'),
       clipboard,
-      hide: closePanel,
+      prepare: () => panelWindow.blur(),
       restore: () => { orbWindow.hide(); panelWindow.show(); panelWindow.focus() },
     })
     ipcMain.handle('desktop:insertion', async (event, action, value) => {
@@ -82,10 +82,6 @@ else {
       try {
         let data
         const payload = () => ({ app: 'prompt-vault-pro', version: 2, exportedAt: new Date().toISOString(), prompts: snapshot || [], preferences })
-        if (action === 'settings' && process.platform === 'darwin') {
-          await shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility')
-          return { ok: true }
-        }
         if (action === 'status') data = await gist.status()
         else if (action === 'configure') data = await gist.configure(value || {})
         else if (action === 'pull') data = await gist.pull()

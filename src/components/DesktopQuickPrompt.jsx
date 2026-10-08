@@ -11,15 +11,18 @@ export default function DesktopQuickPrompt({ orb }) {
   const [insertionPending, setInsertionPending] = useState(false)
   const [insertionMessage, setInsertionMessage] = useState('')
   const delivering = useRef(false)
+  const permissionReady = useRef(undefined)
   const bridge = window.desktopPrompt
   useEffect(() => {
     if (orb) return
-    bridge.insertion('status').then(setInsertion).catch(() => setInsertionMessage('直接插入助手不可用'))
+    bridge.insertion('status').then(result => { permissionReady.current = result.permitted; setInsertion(result) }).catch(() => setInsertionMessage('直接插入助手不可用'))
     let active = true
     const refresh = () => bridge.insertion('status').then(result => {
       if (!active) return
+      const recovered = permissionReady.current === false && result.permitted
+      permissionReady.current = result.permitted
       setInsertion(result)
-      if (result.enabled && result.permitted) setInsertionMessage('权限已生效。请点击目标输入框，再选提示词。')
+      if (result.enabled && recovered) setInsertionMessage('权限已生效。请点击目标输入框，再选提示词。')
     }).catch(() => {})
     window.addEventListener('focus', refresh)
     const snapshot = bridge.onSnapshot(setPrompts)
@@ -60,7 +63,7 @@ export default function DesktopQuickPrompt({ orb }) {
     setInsertionPending(true)
     try {
       const result = await bridge.insertion('configure', enabled)
-      if (typeof result.enabled === 'boolean') setInsertion(result)
+      if (typeof result.enabled === 'boolean') { permissionReady.current = result.permitted; setInsertion(result) }
       setInsertionMessage(!result.ok ? result.error : enabled ? result.permitted ? '先点击目标输入框，再选提示词；仅粘贴，不自动发送。' : '系统尚未认可当前应用的辅助功能权限。若已开启，请关闭再开启 PromptVaultPro 权限，然后重新检查。' : '已切换为仅复制')
     } catch { setInsertionMessage('设置保存失败，请重试') }
     finally { setInsertionPending(false) }
