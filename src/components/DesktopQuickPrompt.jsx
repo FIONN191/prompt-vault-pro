@@ -15,6 +15,13 @@ export default function DesktopQuickPrompt({ orb }) {
   useEffect(() => {
     if (orb) return
     bridge.insertion('status').then(setInsertion).catch(() => setInsertionMessage('直接插入助手不可用'))
+    let active = true
+    const refresh = () => bridge.insertion('status').then(result => {
+      if (!active) return
+      setInsertion(result)
+      if (result.enabled && result.permitted) setInsertionMessage('权限已生效。请点击目标输入框，再选提示词。')
+    }).catch(() => {})
+    window.addEventListener('focus', refresh)
     const snapshot = bridge.onSnapshot(setPrompts)
     const result = bridge.onResult(({ requestId, ...outcome }) => {
       const request = pending.current.get(requestId)
@@ -25,6 +32,8 @@ export default function DesktopQuickPrompt({ orb }) {
     })
     bridge.ready()
     return () => {
+      active = false
+      window.removeEventListener('focus', refresh)
       snapshot(); result()
       for (const request of pending.current.values()) { clearTimeout(request.timer); request.resolve({ ok: false, error: '面板已关闭' }) }
       pending.current.clear()
@@ -52,7 +61,7 @@ export default function DesktopQuickPrompt({ orb }) {
     try {
       const result = await bridge.insertion('configure', enabled)
       if (typeof result.enabled === 'boolean') setInsertion(result)
-      setInsertionMessage(!result.ok ? result.error : enabled ? result.permitted ? '先点击目标输入框，再选提示词；仅粘贴，不自动发送。' : '请在系统设置 → 隐私与安全性 → 辅助功能中授权，然后重新检查。' : '已切换为仅复制')
+      setInsertionMessage(!result.ok ? result.error : enabled ? result.permitted ? '先点击目标输入框，再选提示词；仅粘贴，不自动发送。' : '系统尚未认可当前应用的辅助功能权限。若已开启，请关闭再开启 PromptVaultPro 权限，然后重新检查。' : '已切换为仅复制')
     } catch { setInsertionMessage('设置保存失败，请重试') }
     finally { setInsertionPending(false) }
   }
@@ -96,6 +105,7 @@ export default function DesktopQuickPrompt({ orb }) {
       insertionPending={insertionPending}
       insertionMessage={insertionMessage}
       onChangeInsertion={changeInsertion}
+      onOpenInsertionSettings={() => bridge.insertion('settings')}
       onOpenPrompt={prompt => bridge.openMain(prompt.id)} />
     <Toast toasts={toasts} />
   </>

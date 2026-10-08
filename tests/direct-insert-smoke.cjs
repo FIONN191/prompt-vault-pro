@@ -21,6 +21,8 @@ const wait=async(fn)=>{for(let i=0;i<100;i++){if(await fn())return;await delay(1
  await wait(async()=>await panel.evaluate(async()=> (await window.desktopPrompt.insertion('status')).enabled))
  const status=await panel.evaluate(()=>window.desktopPrompt.insertion('status'))
  assert.equal(status.permitted,true,'Host must have accessibility permission for actual insertion test')
+ const recheck=await panel.evaluate(()=>window.desktopPrompt.insertion('configure',true))
+ assert.equal(recheck.permitted,true,'fresh helper must retain granted permission')
  // No captured external input must fail without typing anywhere.
  const absent=await panel.evaluate(()=>window.desktopPrompt.insertion('insert','nonexistent-id'))
  assert.equal(absent.ok,false)

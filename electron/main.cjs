@@ -58,6 +58,10 @@ else {
     ipcMain.handle('desktop:insertion', async (event, action, value) => {
       if (!trusted(event, panelWindow)) return { ok: false, error: '无权操作' }
       try {
+        if (action === 'settings' && process.platform === 'darwin') {
+          await shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility')
+          return { ok: true }
+        }
         if (action === 'status') return await directInsert.status()
         if (action === 'configure') return await directInsert.configure(value === true)
         if (action === 'insert') {
@@ -78,6 +82,10 @@ else {
       try {
         let data
         const payload = () => ({ app: 'prompt-vault-pro', version: 2, exportedAt: new Date().toISOString(), prompts: snapshot || [], preferences })
+        if (action === 'settings' && process.platform === 'darwin') {
+          await shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility')
+          return { ok: true }
+        }
         if (action === 'status') data = await gist.status()
         else if (action === 'configure') data = await gist.configure(value || {})
         else if (action === 'pull') data = await gist.pull()

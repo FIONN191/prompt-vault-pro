@@ -38,11 +38,22 @@ function createDirectInsert({ settingsPath, nativeDir, clipboard, hide, restore,
    child.stdin.write(JSON.stringify({id,action,...extra})+'\n')
   })
  }
+ async function restart() {
+  const previous = child
+  if (!previous) return
+  await new Promise(resolve => {
+   const timer = setTimeout(() => { previous.kill('SIGKILL') }, 2000)
+   previous.once('exit', () => { clearTimeout(timer); resolve() })
+   previous.kill()
+  })
+ }
  async function status() { return {enabled,...await request('status')} }
  async function configure(value) {
   if(busy)throw new Error('正在插入，请稍候')
   fs.writeFileSync(settingsPath+'.tmp',JSON.stringify({enabled:value===true}));fs.renameSync(settingsPath+'.tmp',settingsPath)
   enabled=value===true
+  // A new process re-reads macOS permission state after the user grants access.
+  if(enabled && platform==='darwin')await restart()
   await request('enable',{enabled})
   const result=enabled?await request('permission'):await request('status')
   return {...result,enabled}
@@ -53,7 +64,9 @@ function createDirectInsert({ settingsPath, nativeDir, clipboard, hide, restore,
   busy=true
   try {
    const state=await request('status')
-   if(!state.ok || !state.permitted || !state.target) return {ok:false,error:!state.permitted?'请开启系统辅助功能权限；提示词已复制':'请先点击目标输入框，再打开快速面板；提示词已复制'}
+   if(!state.ok)return {ok:false,error:state.error || '插入助手不可用；提示词已复制'}
+   if(!state.permitted)return {ok:false,error:'系统尚未授予当前应用辅助功能权限。若已开启，请关闭再开启 PromptVaultPro 权限，然后点重新检查；提示词已复制'}
+   if(!state.target)return {ok:false,error:'未识别到目标输入框，请先点击目标输入框再打开面板；提示词已复制'}
    clipboard.writeText(text)
    hide()
    const result=await request('insert')
