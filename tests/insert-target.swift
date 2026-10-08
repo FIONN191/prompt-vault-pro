@@ -25,7 +25,8 @@ class Delegate: NSObject, NSTextViewDelegate {
 }
 let delegate = Delegate(); input.delegate = delegate
 let timer=Timer.scheduledTimer(withTimeInterval:0.1,repeats:true){_ in
- let data=try! JSONSerialization.data(withJSONObject:["text":input.string,"returns":delegate.returns])
+ let windows = (CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String:Any]] ?? []).filter { ($0[kCGWindowLayer as String] as? Int) == 0 }.compactMap { $0[kCGWindowOwnerPID as String] as? Int }
+ let data=try! JSONSerialization.data(withJSONObject:["text":input.string,"returns":delegate.returns,"windowOrder":windows,"frontmostPID":NSWorkspace.shared.frontmostApplication?.processIdentifier ?? -1])
  try? data.write(to:URL(fileURLWithPath:output),options:.atomic)
 }
 app.run()

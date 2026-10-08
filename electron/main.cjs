@@ -21,7 +21,9 @@ function load(win, hash = '') {
   win.webContents.on('will-navigate', event => event.preventDefault())
 }
 function floatWindow(options) {
-  const win = new BrowserWindow({ ...options, show: false, frame: false, resizable: options.resizable === true, minimizable: false, maximizable: false, skipTaskbar: true, alwaysOnTop: true, webPreferences })
+  // macOS utility panels take keyboard focus without raising the main app.
+  const floatingOptions = process.platform === 'darwin' ? { type: 'panel', acceptFirstMouse: true } : {}
+  const win = new BrowserWindow({ ...options, ...floatingOptions, show: false, frame: false, resizable: options.resizable === true, minimizable: false, maximizable: false, skipTaskbar: true, alwaysOnTop: true, webPreferences })
   win.setAlwaysOnTop(true, 'floating')
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   return win
@@ -73,7 +75,8 @@ else {
       finally { if (ownsBusy) accountBusy = false }
     })
     mainWindow = new BrowserWindow({ show: !process.argv.includes('--startup') && !app.getLoginItemSettings().wasOpenedAtLogin, width: 1360, height: 860, minWidth: 900, minHeight: 600, backgroundColor: '#05060c', title: 'Prompt Vault Pro', autoHideMenuBar: true, webPreferences })
-    orbWindow = floatWindow({ width: 72, height: 72, transparent: true, hasShadow: false, title: 'Prompt Vault 悬浮球' })
+    // The orb is mouse-only; focus would activate all windows before pointer-up.
+    orbWindow = floatWindow({ width: 72, height: 72, focusable: false, transparent: true, hasShadow: false, title: 'Prompt Vault 悬浮球' })
     panelWindow = floatWindow({ width: 420, height: 720, minWidth: 360, minHeight: 480, resizable: true, backgroundColor: '#0a0e1a', title: '快速提示词' })
     directInsert = createDirectInsert({
       settingsPath: path.join(app.getPath('userData'), 'direct-insert.json'),
