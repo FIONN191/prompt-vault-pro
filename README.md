@@ -7,7 +7,13 @@
 - 数据全部存在浏览器 / 应用的 localStorage 里
 - 桌面版：Electron 打包，Mac（dmg）+ Windows（exe）双端
 
-## 当前版本：v1.0.10
+## 当前版本：v1.0.11
+
+- 快速面板底部新增「直接插入目标输入框」开关，默认关闭，选择保存在本机。开启后先点击其他应用的输入框，再通过悬浮球或快捷键打开面板，点击提示词会切回捕获的输入框执行粘贴；选中文字时替换选区，不发送 Enter。
+- Mac 首次开启需允许辅助功能权限；Windows 使用 UI Automation 和 Ctrl+V，系统可能禁止向管理员权限窗口输入。无法恢复焦点、输入框失效、权限不足时提示词保留在剪贴板，提示手动粘贴。只支持可访问的文本输入控件；网页预览不能向其他应用插入。
+- 构建 Mac 版需 Xcode Command Line Tools：构建脚本会将 Swift 插入助手编译为 Intel + Apple Silicon 通用程序。Windows 使用随包提供的 PowerShell / UI Automation 助手，无需额外 npm 自动化依赖。
+
+上一版 v1.0.10：
 
 - 快速面板底部「提示词数据」提供本地 JSON 导出/导入、GitHub Secret Gist 拉取/上传合并。
 - 「新增 → 新建分类」直接创建并选中分类，与主窗口同步。
@@ -60,7 +66,7 @@ npx electron-builder --mac --config.directories.output=release  # 在 macOS 上�
 npx electron-builder --win --config.directories.output=release  # 建议在 Windows 上构建
 ```
 
-macOS 跨平台生成 Windows 安装包还需要可用的 Wine；Apple Silicon 上的 x86_64 Wine 需要 Rosetta 2。v1.0.10 已生成 Mac 和 Windows 安装包；Mac 交互在本机验证，Windows 仍需真机验证。源码同步和本地安装包不代表已发布 GitHub Release。
+macOS 跨平台生成 Windows 安装包还需要可用的 Wine；Apple Silicon 上的 x86_64 Wine 需要 Rosetta 2。v1.0.11 已生成 Mac 和 Windows 安装包；Mac 交互在本机验证，Windows 仍需真机验证。源码同步和本地安装包不代表已发布 GitHub Release。
 
 产物在外接盘 `/Volumes/SN580 1TB Media/开发/PromptVaultPro/release/`（内置盘空间不足，打包输出和临时目录都指向外接盘，打包时必须挂载外接盘）：
 

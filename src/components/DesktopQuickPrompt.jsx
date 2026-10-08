@@ -7,9 +7,14 @@ export default function DesktopQuickPrompt({ orb }) {
   const [prompts, setPrompts] = useState(null)
   const [toasts, setToasts] = useState([])
   const pending = useRef(new Map())
+  const [insertion, setInsertion] = useState({ enabled: false, permitted: true })
+  const [insertionPending, setInsertionPending] = useState(false)
+  const [insertionMessage, setInsertionMessage] = useState('')
+  const delivering = useRef(false)
   const bridge = window.desktopPrompt
   useEffect(() => {
     if (orb) return
+    bridge.insertion('status').then(setInsertion).catch(() => setInsertionMessage('直接插入助手不可用'))
     const snapshot = bridge.onSnapshot(setPrompts)
     const result = bridge.onResult(({ requestId, ...outcome }) => {
       const request = pending.current.get(requestId)
@@ -41,6 +46,33 @@ export default function DesktopQuickPrompt({ orb }) {
     setTimeout(() => setToasts(items => items.filter(item => item.id !== requestId)), 3500)
     return ok
   }
+  const changeInsertion = async enabled => {
+    if (insertionPending) return
+    setInsertionPending(true)
+    try {
+      const result = await bridge.insertion('configure', enabled)
+      if (typeof result.enabled === 'boolean') setInsertion(result)
+      setInsertionMessage(!result.ok ? result.error : enabled ? result.permitted ? '先点击目标输入框，再选提示词；仅粘贴，不自动发送。' : '请在系统设置 → 隐私与安全性 → 辅助功能中授权，然后重新检查。' : '已切换为仅复制')
+    } catch { setInsertionMessage('设置保存失败，请重试') }
+    finally { setInsertionPending(false) }
+  }
+  const deliver = async prompt => {
+    if (delivering.current) return
+    delivering.current = true
+    try {
+      const result = await send({ type: 'copy', id: prompt.id })
+      if (!result.ok) { setInsertionMessage(result.error || '复制失败，未执行插入'); return }
+      if (insertion.enabled) {
+        const pasted = await bridge.insertion('insert', prompt.id)
+        setInsertionMessage(pasted.ok ? '已执行粘贴，未发送' : pasted.error)
+      } else {
+        const id = crypto.randomUUID()
+        setToasts([{ id, type: 'success', message: '已复制，切回目标应用粘贴即可' }])
+        setTimeout(() => setToasts(items => items.filter(item => item.id !== id)), 3500)
+      }
+    } catch { setInsertionMessage('直接插入未完成，可手动粘贴') }
+    finally { delivering.current = false }
+  }
   const manage = async (action, value) => {
     const result = action === 'category' ? await send({ type: 'category', name: value }) : await bridge.manageData(action, value)
     if (!result.ok) throw new Error(result.error || '操作失败')
@@ -59,7 +91,11 @@ export default function DesktopQuickPrompt({ orb }) {
       onCreateCategory={name => manage('category', name)}
       onManageData={manage}
       onQuickAdd={form => run({ type: 'add', form }, '已存入素材库')}
-      onCopy={prompt => run({ type: 'copy', id: prompt.id }, '已复制，切回目标应用粘贴即可')}
+      onCopy={deliver}
+      insertion={insertion}
+      insertionPending={insertionPending}
+      insertionMessage={insertionMessage}
+      onChangeInsertion={changeInsertion}
       onOpenPrompt={prompt => bridge.openMain(prompt.id)} />
     <Toast toasts={toasts} />
   </>

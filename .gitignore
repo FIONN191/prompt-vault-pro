@@ -32,3 +32,5 @@ floating-orb.json
 .idea/
 .vscode/
 *.swp
+electron/native/.build/
+electron/native/prompt-insert-mac

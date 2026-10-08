@@ -1,0 +1,53 @@
+const {_electron}=require('playwright')
+const {spawn,execFileSync}=require('node:child_process')
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),assert=require('node:assert/strict')
+const root=path.resolve(__dirname,'..'),profile=fs.mkdtempSync(path.join(os.tmpdir(),'pvp-insert-'))
+const executable=process.env.PROMPT_VAULT_TEST_EXECUTABLE
+const delay=ms=>new Promise(r=>setTimeout(r,ms))
+const wait=async(fn)=>{for(let i=0;i<100;i++){if(await fn())return;await delay(100)}throw Error('condition timed out')}
+;(async()=>{
+ let app,target,clipboardBefore
+ const file=path.join(profile,'target.json'),binary=path.join(profile,'insert-target')
+ execFileSync('swiftc',[path.join(__dirname,'insert-target.swift'),'-o',binary])
+ try {
+ app=await _electron.launch({executablePath:executable||require('electron'),args:[...(executable?[]:[root]),'--user-data-dir='+profile],env:{...process.env,VITE_DEV_SERVER_URL:''}})
+ await app.firstWindow();await wait(()=>app.windows().length===3&&app.windows().every(w=>w.url().startsWith('file:')))
+ const main=app.windows().find(w=>!w.url().includes('desktop-')),panel=app.windows().find(w=>w.url().includes('desktop-panel'))
+ await main.getByLabel('界面主题').waitFor()
+ clipboardBefore=await app.evaluate(({clipboard})=>clipboard.readText())
+ await main.evaluate(()=>window.desktopPrompt.toggle());await panel.getByLabel('直接插入目标输入框').waitFor()
+ assert.equal(await panel.getByLabel('直接插入目标输入框').isChecked(),false)
+ await panel.getByLabel('直接插入目标输入框').click()
+ await wait(async()=>await panel.evaluate(async()=> (await window.desktopPrompt.insertion('status')).enabled))
+ const status=await panel.evaluate(()=>window.desktopPrompt.insertion('status'))
+ assert.equal(status.permitted,true,'Host must have accessibility permission for actual insertion test')
+ // No captured external input must fail without typing anywhere.
+ const absent=await panel.evaluate(()=>window.desktopPrompt.insertion('insert','nonexistent-id'))
+ assert.equal(absent.ok,false)
+ await panel.keyboard.press('Escape')
+ target=spawn(binary,[file],{stdio:'ignore'})
+ await wait(()=>fs.existsSync(file))
+ await wait(async()=>!!(await panel.evaluate(()=>window.desktopPrompt.insertion('status'))).target)
+ await main.evaluate(()=>window.desktopPrompt.toggle());await panel.getByLabel('搜索提示词或标签').fill('去除 Logo')
+ const item=panel.locator('.qv-card-copy').first();await item.waitFor()
+ const expected=await main.evaluate(()=>{const p=JSON.parse(localStorage.getItem('prompt_vault_pro_prompts_v1')).find(p=>p.title.includes('去除 Logo'));return p.englishPrompt||p.chinesePrompt})
+ await item.click()
+ await delay(600)
+
+ await wait(()=>JSON.parse(fs.readFileSync(file)).text===`before ${expected} after`)
+ assert.equal(JSON.parse(fs.readFileSync(file)).returns,0)
+ const visible=await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('desktop-panel')).isVisible())
+ assert.equal(visible,false)
+ await main.evaluate(()=>window.desktopPrompt.toggle())
+ target.kill();await delay(400)
+ await panel.locator('.qv-card-copy').first().click()
+ await wait(async()=>/已复制|手动粘贴/.test(await panel.locator('.qv-insertion').innerText()))
+ await panel.getByLabel('直接插入目标输入框').click()
+ await wait(async()=>!(await panel.evaluate(()=>window.desktopPrompt.insertion('status'))).enabled)
+ const before=JSON.parse(fs.readFileSync(file)).text
+ await panel.locator('.qv-card-copy').first().click();await panel.getByText('已复制，切回目标应用粘贴即可',{exact:true}).waitFor();await delay(300)
+ assert.equal(JSON.parse(fs.readFileSync(file)).text,before)
+ assert.equal(JSON.parse(fs.readFileSync(path.join(profile,'direct-insert.json'))).enabled,false)
+ console.log(JSON.stringify({passed:true,profile,checks:['default off','permission check','unknown prompt rejected','external focused selection replaced','no Return or send','panel hides after insert','stale target falls back to clipboard','off means copy only','setting persisted']}))
+ }finally {target?.kill();if(app&&clipboardBefore!==undefined)await app.evaluate(({clipboard},text)=>clipboard.writeText(text),clipboardBefore);await app?.close()}
+})().catch(e=>{console.error(e);process.exitCode=1})

@@ -37,7 +37,7 @@ function PromptGlyph({ className }) {
   )
 }
 
-export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenPrompt, onCreateCategory, onManageData, desktop = false }) {
+export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenPrompt, onCreateCategory, onManageData, insertion, insertionPending, insertionMessage, onChangeInsertion, desktop = false }) {
   const { categories, preferences, savePreferences } = usePreferences()
   const [captureOpen, setCaptureOpen] = useState(false)
   const [activeTag, setActiveTag] = useState(null)
@@ -240,15 +240,17 @@ export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenProm
               <div className="qv-tags" aria-label="标签筛选"><button className={`qv-tag ${!activeTag ? 'is-active' : ''}`} onClick={() => setActiveTag(null)} aria-pressed={!activeTag}>全部</button>{tags.map(tag => <button key={tag} className={`qv-tag ${activeTag === tag ? 'is-active' : ''}`} onClick={() => setActiveTag(current => current === tag ? null : tag)} aria-pressed={activeTag === tag}>{tag}</button>)}</div>
             </div>
 
-            <div className="qv-list-heading"><span>{favoritesOnly ? '我的收藏' : activeTag || '全部提示词'}<b>{results.length}</b></span><small>点击卡片即可复制</small></div>
+            <div className="qv-list-heading"><span>{favoritesOnly ? '我的收藏' : activeTag || '全部提示词'}<b>{results.length}</b></span><small>{insertion?.enabled ? '点击插入目标输入框' : '点击卡片即可复制'}</small></div>
             <div className={`qv-results ${grid ? 'is-grid' : ''}`}>
               {results.length === 0 ? <div className="qv-empty"><span>⌕</span><strong>{prompts.length ? '没有匹配的提示词' : '收藏你的第一条灵感'}</strong><p>{prompts.length ? '换个关键词，或调整标签和收藏筛选。' : '点击顶部「新增」，把常用提示词放在手边。'}</p>{prompts.length > 0 && <button className="qv-tag" onClick={() => { setQ(''); setActiveTag(null); setFavoritesOnly(false) }}>清空筛选</button>}</div> : results.map(p => <article className="qv-card" key={p.id}>
-                <button className="qv-card-copy" onClick={() => copyRow(p)} title="点击复制主提示词" aria-label={`复制 ${p.title}`}><span className="qv-card-title">{p.isFavorite && <span className="qv-star">☆</span>}{p.title}</span><span className="qv-card-meta">{(p.tags.length ? p.tags.slice(0, 2) : [categories.find(c => c.id === p.category)?.zh || p.category]).map(tag => <span className="qv-badge" key={tag}>{tag}</span>)}</span>{grid && <span className="qv-card-description">{p.description || mainTextOf(p)}</span>}</button>
+                <button className="qv-card-copy" onClick={() => copyRow(p)} title={insertion?.enabled ? '插入到目标输入框（不发送）' : '点击复制主提示词'} aria-label={`${insertion?.enabled ? '插入' : '复制'} ${p.title}`}><span className="qv-card-title">{p.isFavorite && <span className="qv-star">☆</span>}{p.title}</span><span className="qv-card-meta">{(p.tags.length ? p.tags.slice(0, 2) : [categories.find(c => c.id === p.category)?.zh || p.category]).map(tag => <span className="qv-badge" key={tag}>{tag}</span>)}</span>{grid && <span className="qv-card-description">{p.description || mainTextOf(p)}</span>}</button>
                 {onOpenPrompt && <button className="qv-detail" onClick={() => { onOpenPrompt(p); close() }} title="查看详情" aria-label={`查看详情 ${p.title}`}>↗</button>}
               </article>)}
             </div>
 
-            <footer className="qv-footer"><button className={`qv-favorites ${favoritesOnly ? 'is-active' : ''}`} onClick={() => setFavoritesOnly(v => !v)} aria-pressed={favoritesOnly}><span>{favoritesOnly ? '★' : '☆'}</span> 收藏库 <small>{prompts.filter(p => p.isFavorite).length}</small></button><div className="qv-footer-meta"><span>{desktop ? '⌘/Ctrl + Shift + K' : '⌘/Ctrl + K'}<span className="qv-dot">·</span>Esc 收起</span><span>{onManageData ? <button onClick={() => { setDataOpen(v => !v); setCaptureOpen(false) }} aria-expanded={dataOpen}>⚙ 提示词数据</button> : '本地保存'}</span></div><span className="qv-resize-hint" title="拖动窗口边缘调整大小" aria-hidden="true">◢</span></footer>
+            <footer className="qv-footer">
+              {desktop && onChangeInsertion && <div className="qv-insertion"><label><input type="checkbox" aria-label="直接插入目标输入框" disabled={insertionPending} checked={!!insertion?.enabled} onChange={e => onChangeInsertion(e.target.checked)} /><span>直接插入目标输入框<small>关闭时仅复制 · 开启后粘贴，不自动发送</small></span></label>{insertion?.enabled && !insertion.permitted && <button disabled={insertionPending} onClick={() => onChangeInsertion(true)}>授权 / 重新检查</button>}{insertionMessage && <p role="status">{insertionMessage}</p>}</div>}
+              <button className={`qv-favorites ${favoritesOnly ? 'is-active' : ''}`} onClick={() => setFavoritesOnly(v => !v)} aria-pressed={favoritesOnly}><span>{favoritesOnly ? '★' : '☆'}</span> 收藏库 <small>{prompts.filter(p => p.isFavorite).length}</small></button><div className="qv-footer-meta"><span>{desktop ? '⌘/Ctrl + Shift + K' : '⌘/Ctrl + K'}<span className="qv-dot">·</span>Esc 收起</span><span>{onManageData ? <button onClick={() => { setDataOpen(v => !v); setCaptureOpen(false) }} aria-expanded={dataOpen}>⚙ 提示词数据</button> : '本地保存'}</span></div><span className="qv-resize-hint" title="拖动窗口边缘调整大小" aria-hidden="true">◢</span></footer>
           </aside>
         </>
       )}

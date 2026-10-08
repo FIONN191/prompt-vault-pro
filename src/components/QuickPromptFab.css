@@ -93,3 +93,11 @@ html[data-theme] .quick-vault-panel .qv-search input:focus-visible { outline: no
 
 .qv-tools-open .qv-tags { max-height: 64px; }
 @media (max-height: 600px) { .qv-tools-open .qv-tags { display: none; } .qv-tools-open .qv-footer-meta { padding-top: 6px; } }
+
+.qv-insertion { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--qv-line); }
+.qv-insertion label { display: flex; align-items: flex-start; gap: 9px; font-size: 12px; cursor: pointer; }
+.qv-insertion input { margin-top: 3px; }
+.qv-insertion small { display: block; margin-top: 3px; color: var(--qv-muted); font-size: 10px; }
+.qv-insertion p { margin: 6px 0 0; font-size: 11px; color: var(--qv-muted); line-height: 1.5; max-height: 48px; overflow-y: auto; }
+.qv-insertion > button { font-size: 11px; text-decoration: underline; margin-top: 5px; }
+@media(max-height:600px) { .qv-insertion small { display: none; } .qv-tools-open .qv-capture, .qv-tools-open .qv-data { max-height: 32%; } }

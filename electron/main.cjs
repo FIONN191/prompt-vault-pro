@@ -3,10 +3,11 @@ const path = require('path')
 const fsp = require('node:fs/promises')
 const { createGistBackup } = require('./gist-backup.cjs')
 const { parsePayload } = require('./prompt-data.cjs')
+const { createDirectInsert } = require('./direct-insert.cjs')
 const { createFloatingOrb } = require('./floating-orb.cjs')
 const DEV_URL = process.env.VITE_DEV_SERVER_URL
 let mainWindow, orbWindow, panelWindow, floatingOrb, quitting = false, snapshot = null
-let preferences = null
+let preferences = null, directInsert = null
 const webPreferences = { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false }
 function load(win, hash = '') {
   if (DEV_URL) win.loadURL(DEV_URL + '#' + hash)
@@ -47,6 +48,27 @@ else {
     mainWindow = new BrowserWindow({ width: 1360, height: 860, minWidth: 900, minHeight: 600, backgroundColor: '#05060c', title: 'Prompt Vault Pro', autoHideMenuBar: true, webPreferences })
     orbWindow = floatWindow({ width: 72, height: 72, transparent: true, hasShadow: false, title: 'Prompt Vault 悬浮球' })
     panelWindow = floatWindow({ width: 420, height: 720, minWidth: 360, minHeight: 480, resizable: true, backgroundColor: '#0a0e1a', title: '快速提示词' })
+    directInsert = createDirectInsert({
+      settingsPath: path.join(app.getPath('userData'), 'direct-insert.json'),
+      nativeDir: path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'native'),
+      clipboard,
+      hide: closePanel,
+      restore: () => { orbWindow.hide(); panelWindow.show(); panelWindow.focus() },
+    })
+    ipcMain.handle('desktop:insertion', async (event, action, value) => {
+      if (!trusted(event, panelWindow)) return { ok: false, error: '无权操作' }
+      try {
+        if (action === 'status') return await directInsert.status()
+        if (action === 'configure') return await directInsert.configure(value === true)
+        if (action === 'insert') {
+          const prompt = snapshot?.find(p => p.id === value)
+          const text = prompt && (prompt.englishPrompt || prompt.chinesePrompt || prompt.shortPrompt || prompt.strongPrompt)
+          if (!text) return { ok: false, error: '提示词不存在或内容为空' }
+          return await directInsert.insert(text)
+        }
+        return { ok: false, error: '未知操作' }
+      } catch (error) { return { ok: false, error: error.message } }
+    })
     const gist = createGistBackup({ settingsPath: path.join(app.getPath('userData'), 'gist-backup.json'), safeStorage, fetch: (...args) => net.fetch(...args) })
     let dataBusy = false
     ipcMain.handle('desktop:data', async (event, action, value) => {
@@ -160,5 +182,5 @@ else {
     app.on('activate', () => showMain())
   })
 }
-app.on('before-quit', () => { quitting = true; floatingOrb?.cancelDrag() })
+app.on('before-quit', () => { quitting = true; floatingOrb?.cancelDrag(); directInsert?.stop() })
 app.on('will-quit', () => globalShortcut.unregisterAll())
