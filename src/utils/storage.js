@@ -30,6 +30,7 @@ export function normalizePrompt(raw) {
     isFavorite: Boolean(p.isFavorite),
     createdAt: typeof p.createdAt === 'string' ? p.createdAt : nowIso,
     updatedAt: typeof p.updatedAt === 'string' ? p.updatedAt : nowIso,
+    useCount: Number.isSafeInteger(p.useCount) && p.useCount >= 0 ? p.useCount : p.lastUsedAt ? 1 : 0,
     lastUsedAt: typeof p.lastUsedAt === 'string' ? p.lastUsedAt : null,
   }
 }

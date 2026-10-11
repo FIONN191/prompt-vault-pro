@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePreferences } from '../PreferencesContext.jsx'
 import './QuickPromptFab.css'
+import QuickTagFilter from './QuickTagFilter.jsx'
 import QuickPanelData from './QuickPanelData.jsx'
 
 const hasCJK = (s) => /[㐀-鿿]/.test(s)
@@ -237,7 +238,7 @@ export default function QuickPromptFab({ prompts, onQuickAdd, onCopy, onOpenProm
                 <div className="qv-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input ref={searchRef} value={q} onChange={e => setQ(e.target.value)} placeholder="搜索提示词或标签…" aria-label="搜索提示词或标签" />{q && <button onClick={() => { setQ(''); searchRef.current?.focus() }} aria-label="清空搜索">×</button>}</div>
                 <button className={`qv-icon qv-layout ${grid ? 'is-active' : ''}`} onClick={() => setGrid(v => !v)} aria-label={grid ? '切换列表视图' : '切换网格视图'} aria-pressed={grid} title={grid ? '列表视图' : '网格视图'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">{grid ? <path d="M4 6h16M4 12h16M4 18h16"/> : <><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></>}</svg></button>
               </div>
-              <div className="qv-tags" aria-label="标签筛选"><button className={`qv-tag ${!activeTag ? 'is-active' : ''}`} onClick={() => setActiveTag(null)} aria-pressed={!activeTag}>全部</button>{tags.map(tag => <button key={tag} className={`qv-tag ${activeTag === tag ? 'is-active' : ''}`} onClick={() => setActiveTag(current => current === tag ? null : tag)} aria-pressed={activeTag === tag}>{tag}</button>)}</div>
+              <QuickTagFilter prompts={prompts} activeTag={activeTag} onSelect={setActiveTag} />
             </div>
 
             <div className="qv-list-heading"><span>{favoritesOnly ? '我的收藏' : activeTag || '全部提示词'}<b>{results.length}</b></span><small>{insertion?.enabled ? insertion.permitted ? '点击插入目标输入框' : '权限未就绪 · 点击仅复制' : '点击卡片即可复制'}</small></div>

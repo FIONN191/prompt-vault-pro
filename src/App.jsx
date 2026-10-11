@@ -143,7 +143,7 @@ export default function App() {
     }
     if (prompt) {
       update(
-        loadPrompts().map((p) => (p.id === prompt.id ? { ...p, lastUsedAt: new Date().toISOString() } : p)),
+        loadPrompts().map((p) => (p.id === prompt.id ? { ...p, useCount: Math.min(Number.MAX_SAFE_INTEGER, (p.useCount || 0) + 1), lastUsedAt: new Date().toISOString() } : p)),
       )
     }
     showToast(`${label}已复制到剪贴板`)

@@ -1,0 +1,42 @@
+const { _electron } = require('playwright')
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),assert=require('node:assert/strict')
+const root=path.resolve(__dirname,'..'),profile=fs.mkdtempSync(path.join(os.tmpdir(),'pvp-tag-order-'))
+const launch=()=>_electron.launch({executablePath:require('electron'),args:[root,'--user-data-dir='+profile],env:{...process.env,VITE_DEV_SERVER_URL:''}})
+async function pages(app){
+ await app.firstWindow()
+ for(let i=0;i<100&&(app.windows().length!==3||app.windows().some(p=>!p.url().startsWith('file:')));i++)await new Promise(r=>setTimeout(r,100))
+ const main=app.windows().find(p=>!p.url().includes('desktop-')),panel=app.windows().find(p=>p.url().includes('desktop-panel'))
+ await main.getByLabel('界面主题').waitFor();await main.evaluate(()=>window.desktopPrompt.toggle());await panel.getByLabel('标签排序').waitFor()
+ return {main,panel}
+}
+;(async()=>{
+ let app,clipboard
+ try{
+ app=await launch();let {main,panel}=await pages(app)
+ clipboard=await app.evaluate(({clipboard})=>clipboard.readText())
+ const {rankTags,moveTag}=await import('../src/utils/tagOrder.js')
+ assert.deepEqual(rankTags([{tags:['a','a'],useCount:2},{tags:['b'],useCount:3}],{mode:'frequency'}),['b','a'])
+ assert.deepEqual(rankTags([{tags:['new','b','a']}],{mode:'custom',order:['gone','a']}),['a','b','new'])
+ assert.deepEqual(moveTag(['a','b','c'],'a','c'),['b','c','a'])
+ await panel.locator('.qv-card-copy').first().click()
+ await panel.getByText('已复制，切回目标应用粘贴即可',{exact:true}).waitFor()
+ const used=await main.evaluate(()=>JSON.parse(localStorage.getItem('prompt_vault_pro_prompts_v1')).find(p=>p.useCount===1))
+ assert(used)
+ assert(used.tags.includes(await panel.locator('[data-tag]').first().innerText()))
+ await panel.getByLabel('标签排序').selectOption('custom')
+ const first=panel.locator('[data-tag]').nth(0),third=panel.locator('[data-tag]').nth(2)
+ const moved=await first.innerText()
+ await first.dragTo(third)
+ assert.equal(await panel.locator('[data-tag]').nth(2).innerText(),moved)
+ const order=await panel.locator('[data-tag]').allTextContents()
+ await panel.getByLabel('标签排序').selectOption('frequency')
+ await panel.getByLabel('标签排序').selectOption('custom')
+ assert.deepEqual(await panel.locator('[data-tag]').allTextContents(),order)
+ await panel.screenshot({path:path.join(profile,'tag-sort.png')})
+ await app.evaluate(({clipboard},text)=>clipboard.writeText(text),clipboard);await app.close();app=await launch();({main,panel}=await pages(app))
+ assert.equal(await panel.getByLabel('标签排序').inputValue(),'custom')
+ assert.deepEqual(await panel.locator('[data-tag]').allTextContents(),order)
+ assert.equal(await main.evaluate(id=>JSON.parse(localStorage.getItem('prompt_vault_pro_prompts_v1')).find(p=>p.id===id).useCount,used.id),1)
+ console.log(JSON.stringify({passed:true,profile,checks:['usage count','frequency order','deduplication','new and removed tags','drag reorder','mode switching','restart persistence']}))
+ }finally{if(app&&clipboard!==undefined)await app.evaluate(({clipboard},text)=>clipboard.writeText(text),clipboard);await app?.close()}
+})().catch(e=>{console.error(e);process.exitCode=1})

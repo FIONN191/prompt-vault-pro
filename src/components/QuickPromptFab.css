@@ -101,3 +101,8 @@ html[data-theme] .quick-vault-panel .qv-search input:focus-visible { outline: no
 .qv-insertion p { margin: 6px 0 0; font-size: 11px; color: var(--qv-muted); line-height: 1.5; max-height: 48px; overflow-y: auto; }
 .qv-insertion > button { font-size: 11px; text-decoration: underline; margin-top: 5px; }
 @media(max-height:600px) { .qv-insertion small { display: none; } .qv-tools-open .qv-capture, .qv-tools-open .qv-data { max-height: 32%; } }
+.qv-tag-sort { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 10px; color: var(--qv-muted); font-size: 11px; }
+.qv-tag-sort select { margin-left: 5px; padding: 4px 6px; border: 1px solid var(--qv-line); border-radius: 6px; background: var(--qv-card); color: var(--qv-text); }
+.qv-tag-sort small { font-size: 10px; }
+.qv-tag[draggable="true"] { cursor: grab; }
+.qv-tag.is-drop-target { border-color: var(--qv-accent); box-shadow: inset 0 0 0 1px var(--qv-accent); }
