@@ -19,6 +19,7 @@ function createAppSettings({ app, settingsPath, platform = process.platform, iso
   function status() {
     return { version: app.getVersion(), platform, startupSupported: supported,
       openAtLogin: supported ? effectiveStartup() : false,
+      panelDismissMode: saved.panelDismissMode === 'manual' ? 'manual' : 'outside',
       startupError: error }
   }
   function setStartup(enabled) {
@@ -34,6 +35,9 @@ function createAppSettings({ app, settingsPath, platform = process.platform, iso
   if (supported && !saved.startupInitialized) {
     try { setStartup(true) } catch (e) { error = e.message }
   }
-  return { status, setStartup }
+  return { status, setStartup, setPanelDismissMode(mode) {
+    if (!['outside', 'manual'].includes(mode)) throw new Error('无效的面板收起方式')
+    write({ ...saved, panelDismissMode: mode }); return status()
+  } }
 }
 module.exports = { createAppSettings }

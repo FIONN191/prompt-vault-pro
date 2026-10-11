@@ -6,9 +6,11 @@ const { parsePayload } = require('./prompt-data.cjs')
 const { createDirectInsert } = require('./direct-insert.cjs')
 const { createAppSettings } = require('./app-settings.cjs')
 const { createFirebaseAuth } = require('./firebase-auth.cjs')
+const { createOutsideClick } = require('./outside-click.cjs')
 const { createFloatingOrb } = require('./floating-orb.cjs')
 const DEV_URL = process.env.VITE_DEV_SERVER_URL
 let mainWindow, orbWindow, panelWindow, floatingOrb, quitting = false, snapshot = null
+let outsideClick = null
 let preferences = null, directInsert = null, account = null
 const webPreferences = { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false }
 function load(win, hash = '') {
@@ -57,6 +59,7 @@ else {
       if (!trusted(event, mainWindow)) return { ok: false, error: '无权操作' }
       try {
         if (action === 'status') return { ok: true, data: settings.status() }
+        if (action === 'panel-dismiss') return { ok: true, data: settings.setPanelDismissMode(value) }
         if (action === 'startup' && typeof value === 'boolean') return { ok: true, data: settings.setStartup(value) }
         throw new Error('未知设置操作')
       } catch (error) { return { ok: false, error: error.message } }
@@ -183,6 +186,13 @@ else {
       clipboard.writeText(text)
       return true
     })
+    outsideClick = createOutsideClick({
+      nativeDir: path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'native'),
+      panel: panelWindow, screen,
+      enabled: () => settings.status().panelDismissMode === 'outside',
+      suspended: () => dataBusy,
+      close: closePanel,
+    })
     let floatingMenu
     function changeLocked(value) {
       floatingOrb.setLocked(value)
@@ -221,5 +231,5 @@ else {
     app.on('activate', () => showMain())
   })
 }
-app.on('before-quit', () => { quitting = true; floatingOrb?.cancelDrag(); directInsert?.stop(); account?.stop() })
+app.on('before-quit', () => { quitting = true; outsideClick?.stop(); floatingOrb?.cancelDrag(); directInsert?.stop(); account?.stop() })
 app.on('will-quit', () => globalShortcut.unregisterAll())

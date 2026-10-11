@@ -68,6 +68,11 @@ export default function SettingsPanel({ onNavigate, onManageCategories }) {
       <label className="flex items-center justify-between gap-4 cursor-pointer"><span><span className="block text-sm font-medium">开机自启</span><span className="block text-xs text-dim mt-1">安装版首次启动时默认开启；自启时只显示悬浮球。</span></span><input type="checkbox" className="w-5 h-5 accent-neutral-400" checked={!!system?.openAtLogin} disabled={busy || !system?.startupSupported} onChange={e => { const enabled = e.target.checked; run(async () => { const result = await bridge.settings('startup', enabled); if (!result.ok) throw new Error(result.error); setSystem(result.data) }, enabled ? '已开启开机自启' : '已关闭开机自启') }} /></label>
       {(!bridge || (system && !system.startupSupported)) && <p className="text-xs text-dim mt-3">网页、开发和测试环境不修改系统登录项。安装版中可设置此选项。</p>}
       {system?.startupError && <p className="text-sm text-magenta mt-3" role="alert">{system.startupError}</p>}
+      {bridge && <label className="block border-t border-line mt-5 pt-4 text-sm">快速面板收起方式
+        <select aria-label="快速面板收起方式" className="input-cyber block w-full mt-2 px-3 py-2" value={system?.panelDismissMode || 'outside'} disabled={busy || !system} onChange={e => { const mode = e.target.value; run(async () => { const result = await bridge.settings('panel-dismiss', mode); if (!result.ok) throw new Error(result.error); setSystem(result.data) }, '面板收起方式已保存') }}>
+          <option value="outside">点击面板外收起（默认）</option><option value="manual">手动收起（点击右上角叉号）</option>
+        </select><span className="block text-xs text-dim mt-2">两种模式都可使用叉号或 Esc。直接插入、拖拽和文件选择不会因失去焦点而收起。</span>
+      </label>}
       <div className="border-t border-line mt-5 pt-4 flex flex-wrap gap-3 items-center justify-between"><div><p className="text-sm">快速提示词</p><p className="text-xs text-dim mt-1">⌘ / Ctrl + Shift + K · 复制与直接插入在面板内切换</p></div>{bridge && <button className={button} onClick={() => bridge.toggle()}>打开快速面板</button>}</div>
     </Section>
     <Section title="外观" description="主题会同步到主窗口、悬浮球和快速提示词面板。">

@@ -1,7 +1,7 @@
 {
   "name": "prompt-vault-pro",
   "private": true,
-  "version": "1.0.18",
+  "version": "1.0.19",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {

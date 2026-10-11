@@ -1,6 +1,22 @@
 import Cocoa
 import ApplicationServices
 
+// Observe mouse button state only; no keyboard capture or accessibility permission needed.
+if CommandLine.arguments.contains("--watch-clicks") {
+    var previous: UInt32 = 0
+    while true {
+        var current: UInt32 = 0
+        for button: UInt32 in 0...2 {
+            if CGEventSource.buttonState(.combinedSessionState, button: CGMouseButton(rawValue: button)!) { current |= 1 << button }
+        }
+        if current & ~previous != 0, let point = CGEvent(source: nil)?.location {
+            print("{\"x\":\(point.x),\"y\":\(point.y)}"); fflush(stdout)
+        }
+        previous = current
+        usleep(15_000)
+    }
+}
+
 let owner = pid_t(CommandLine.arguments.dropFirst().first.flatMap(Int32.init) ?? 0)
 var targetApp: NSRunningApplication?
 var targetElement: AXUIElement?
