@@ -205,6 +205,22 @@ export default function App() {
     return true
   }
 
+  const quickEditPrompt = (id, form) => {
+    const current = loadPrompts()
+    if (!current.some(p => p.id === id)) throw new Error('这条提示词已被删除，无法保存修改')
+    if (!form || typeof form.title !== 'string' || !form.title.trim()) throw new Error('标题不能为空')
+    const fields = ['title', 'category', 'platform', 'description', 'chinesePrompt', 'englishPrompt', 'shortPrompt', 'strongPrompt', 'negativePrompt', 'usageNotes']
+    const changes = Object.fromEntries(fields.map(key => [key, typeof form[key] === 'string' ? form[key] : '']))
+    if (!['chinesePrompt', 'englishPrompt', 'shortPrompt', 'strongPrompt', 'negativePrompt'].some(key => changes[key].trim())) throw new Error('至少填写一个提示词版本')
+    changes.title = changes.title.trim()
+    changes.category = categories.some(c => c.id === changes.category) ? changes.category : categories[0].id
+    changes.tags = Array.isArray(form.tags) ? form.tags.filter(t => typeof t === 'string') : []
+    changes.variables = Array.isArray(form.variables) ? form.variables.filter(t => typeof t === 'string') : []
+    changes.isFavorite = !!form.isFavorite
+    update(current.map(p => p.id === id ? { ...p, ...changes, updatedAt: new Date().toISOString() } : p))
+    return true
+  }
+
   // The main renderer remains the sole writer, even when its window is hidden.
   const quickCreateCategory = name => {
     const zh = String(name || '').trim()
@@ -230,7 +246,7 @@ export default function App() {
     return { added, updated }
   }
   const desktopHandlers = useRef(null)
-  desktopHandlers.current = { quickAddPrompt, copyPromptText, quickCreateCategory, quickImport }
+  desktopHandlers.current = { quickAddPrompt, quickEditPrompt, copyPromptText, quickCreateCategory, quickImport }
   useEffect(() => {
     window.desktopPrompt?.publish(prompts)
   }, [prompts])
@@ -243,6 +259,7 @@ export default function App() {
         let ok = false, data
         if (request.type === 'category') { data = desktopHandlers.current.quickCreateCategory(request.name); ok = true }
         else if (request.type === 'import') { data = desktopHandlers.current.quickImport(request.payload); ok = true }
+        else if (request.type === 'edit') ok = desktopHandlers.current.quickEditPrompt(request.id, request.form)
         else if (request.type === 'add' && request.form &&
           (request.form.chinesePrompt?.trim() || request.form.englishPrompt?.trim())) {
           ok = desktopHandlers.current.quickAddPrompt(request.form)
@@ -518,6 +535,7 @@ export default function App() {
         prompts={prompts}
         onCreateCategory={quickCreateCategory}
         onQuickAdd={quickAddPrompt}
+        onEditPrompt={quickEditPrompt}
         onCopy={copyPromptText}
         onOpenPrompt={(p) => setDetailId(p.id)}
       />}

@@ -103,6 +103,11 @@ export default function DesktopQuickPrompt({ orb }) {
       onCreateCategory={name => manage('category', name)}
       onManageData={manage}
       onQuickAdd={form => run({ type: 'add', form }, '已存入素材库')}
+      onEditPrompt={async (id, form) => {
+        const result = await send({ type: 'edit', id, form })
+        if (!result.ok) throw new Error(result.error || '保存失败，输入已保留，请重试')
+        return true
+      }}
       onCopy={deliver}
       insertion={insertion}
       insertionPending={insertionPending}

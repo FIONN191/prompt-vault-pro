@@ -178,7 +178,7 @@ else {
       if ((trusted(event, panelWindow) || trusted(event, orbWindow)) && preferences) event.sender.send('desktop:preferences', preferences)
     })
     ipcMain.on('desktop:command', (event, command) => {
-      if (trusted(event, panelWindow) && command && ['add', 'copy', 'category', 'import'].includes(command.type)) mainWindow.webContents.send('desktop:command', command)
+      if (trusted(event, panelWindow) && command && ['add', 'edit', 'copy', 'category', 'import'].includes(command.type)) mainWindow.webContents.send('desktop:command', command)
     })
     ipcMain.on('desktop:result', (event, result) => { if (trusted(event, mainWindow)) panelWindow.webContents.send('desktop:result', result) })
     ipcMain.handle('desktop:copy', (event, text) => {

@@ -1,5 +1,5 @@
 // Create / edit modal; variables are auto-detected from prompt texts on save
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { PLATFORMS } from '../data/defaultPrompts.js'
 import { usePreferences } from '../PreferencesContext.jsx'
 import { extractVariables } from '../utils/promptBuilder.js'
@@ -29,6 +29,9 @@ export default function PromptEditorModal({ initial, isNew, onSave, onClose }) {
     isFavorite: Boolean(initial?.isFavorite),
   }))
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
+  const close = () => { if (!savingRef.current) onClose() }
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
@@ -40,7 +43,8 @@ export default function PromptEditorModal({ initial, isNew, onSave, onClose }) {
     return [...found]
   }, [form])
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (savingRef.current) return
     if (!form.title.trim()) {
       setError('标题不能为空')
       return
@@ -50,7 +54,11 @@ export default function PromptEditorModal({ initial, isNew, onSave, onClose }) {
       setError('至少填写一个提示词版本（中文 / 英文 / 短版 / 强执行版 / 负面）')
       return
     }
-    onSave({
+    savingRef.current = true
+    setSaving(true)
+    setError('')
+    try {
+      const result = await onSave({
       ...form,
       title: form.title.trim(),
       tags: form.tags
@@ -58,18 +66,32 @@ export default function PromptEditorModal({ initial, isNew, onSave, onClose }) {
         .map((t) => t.trim())
         .filter(Boolean),
       variables: detectedVars,
-    })
+      })
+      if (result === false) setError('保存失败，输入已保留，请重试')
+    } catch (e) { setError(e.message || '保存失败，输入已保留') }
+    finally { savingRef.current = false; setSaving(false) }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
+    <div role="dialog" aria-modal="true" aria-label={isNew ? '新建提示词' : '编辑提示词'} className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6"
+      onKeyDown={e => {
+        e.stopPropagation()
+        if (e.key === 'Tab') {
+          const controls = [...e.currentTarget.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled)')]
+          const first = controls[0], last = controls.at(-1)
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus() }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus() }
+        }
+        if (e.key === 'Escape') { e.preventDefault(); close() }
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); handleSave() }
+      }}>
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={close} />
       <div className="modal-card relative neon-panel w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden border-magenta/30">
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-line">
           <h2 className="text-base font-bold tracking-wider">
             <span className="text-magenta glow-text-magenta">{isNew ? '新建提示词' : '编辑提示词'}</span>
           </h2>
-          <button onClick={onClose} className="btn-ghost rounded-md px-2.5 py-1.5 text-xs cursor-pointer">✕</button>
+          <button onClick={close} className="btn-ghost rounded-md px-2.5 py-1.5 text-xs cursor-pointer">✕</button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5">
@@ -127,6 +149,7 @@ export default function PromptEditorModal({ initial, isNew, onSave, onClose }) {
             <label key={key} className="block">
               <span className="text-xs text-dim">{label}</span>
               <textarea
+                aria-label={label}
                 value={form[key]}
                 onChange={set(key)}
                 rows={rows}
@@ -174,9 +197,9 @@ export default function PromptEditorModal({ initial, isNew, onSave, onClose }) {
         </div>
 
         <div className="flex items-center justify-end gap-2 p-4 border-t border-line">
-          <button onClick={onClose} className="btn-ghost rounded-lg px-4 py-2 text-sm cursor-pointer">取消</button>
-          <button onClick={handleSave} className="btn-magenta rounded-lg px-5 py-2 text-sm font-medium cursor-pointer">
-            {isNew ? '创建' : '保存修改'}
+          <button onClick={close} className="btn-ghost rounded-lg px-4 py-2 text-sm cursor-pointer">取消</button>
+          <button disabled={saving} onClick={handleSave} className="btn-magenta rounded-lg px-5 py-2 text-sm font-medium cursor-pointer">
+            {saving ? '正在保存…' : isNew ? '创建' : '保存修改'}
           </button>
         </div>
       </div>
