@@ -17,10 +17,6 @@ html.desktop-orb-page, .desktop-orb-page body, .desktop-orb-page #root {
 .desktop-orb.is-dragging { cursor: grabbing; }
 .desktop-orb.is-locked { cursor: pointer; }
 .desktop-orb > * { pointer-events: none; }
-.desktop-orb.is-locked .desktop-sparkle {
-  top: -3px; right: -2px; padding: 2px; border-radius: 50%; background: #0a0e1a; color: #a78bfa;
-}
-.desktop-sparkle { position: absolute; right: 0; top: -6px; color: #ff2ec4; }
 .desktop-panel-page body { min-height: 0; overflow: hidden; }
 /* Native window movement belongs only to the desktop panel header. */
 .quick-prompt-drag-handle {

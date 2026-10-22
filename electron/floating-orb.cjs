@@ -1,27 +1,31 @@
 const fs = require('fs')
 
-const SIZE = 72
+const DEFAULT_SIZE = 56, MIN_SIZE = 40, MAX_SIZE = 120, PADDING = 16
 const DRAG_THRESHOLD = 5
 const clamp = (value, min, max) => Math.min(Math.max(value, min), Math.max(min, max))
 const validPoint = point => point && [point.x, point.y].every(value => Number.isFinite(value) && Math.abs(value) < 1_000_000)
 
 // Coordinates are Electron screen DIPs, including on mixed-scale displays.
-function createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath, onClick }) {
+function createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath, onClick, onStateChange = () => {} }) {
+  let size = DEFAULT_SIZE
+  let resizeCenter = null
+  const windowSize = () => size + PADDING
   let locked = false, position = null, drag = null, persistenceError = false, panelSize = { width: 420, height: 720 }
   try {
     const saved = JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
     locked = saved.locked === true
+    if (Number.isFinite(saved.size)) size = Math.round(clamp(saved.size, MIN_SIZE, MAX_SIZE))
     if (Number.isFinite(saved.panelSize?.width) && Number.isFinite(saved.panelSize?.height)) panelSize = { width: Math.max(360, saved.panelSize.width), height: Math.max(480, saved.panelSize.height) }
     if (validPoint(saved.position)) position = saved.position
   } catch (error) {
     if (error.code !== 'ENOENT') console.warn('无法读取悬浮球设置，将使用默认位置', error.message)
   }
 
-  const getState = () => ({ locked, persistenceError })
-  const publish = () => orbWindow.webContents.send('desktop:orb-state', getState())
+  const getState = () => ({ locked, persistenceError, size, minSize: MIN_SIZE, maxSize: MAX_SIZE, defaultSize: DEFAULT_SIZE })
+  const publish = () => { orbWindow.webContents.send('desktop:orb-state', getState()); onStateChange(getState()) }
   function persist() {
     try {
-      fs.writeFileSync(settingsPath + '.tmp', JSON.stringify({ version: 1, locked, position, panelSize }), 'utf8')
+      fs.writeFileSync(settingsPath + '.tmp', JSON.stringify({ version: 2, locked, position, panelSize, size }), 'utf8')
       fs.renameSync(settingsPath + '.tmp', settingsPath)
       persistenceError = false
     } catch (error) {
@@ -31,17 +35,20 @@ function createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath, onCli
     publish()
   }
   function bounded(point) {
+    const SIZE = windowSize()
     const area = screen.getDisplayNearestPoint({ x: Math.round(point.x + SIZE / 2), y: Math.round(point.y + SIZE / 2) }).workArea
     return {
       x: Math.round(clamp(point.x, area.x, area.x + area.width - SIZE)),
       y: Math.round(clamp(point.y, area.y, area.y + area.height - SIZE)),
     }
   }
-  function place(point) {
+  function place(point, resizing = false) {
+    if (!resizing) resizeCenter = null
     position = bounded(point)
-    orbWindow.setBounds({ ...position, width: SIZE, height: SIZE }, false)
+    orbWindow.setBounds({ ...position, width: windowSize(), height: windowSize() }, false)
   }
   function positionPanel() {
+    const SIZE = windowSize()
     const orb = orbWindow.getBounds()
     const area = screen.getDisplayNearestPoint({ x: orb.x + SIZE / 2, y: orb.y + SIZE / 2 }).workArea
     const width = Math.min(panelSize.width, area.width - 24), height = Math.min(panelSize.height, area.height - 24)
@@ -75,7 +82,7 @@ function createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath, onCli
     cancelDrag()
     if (!position) {
       const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea
-      position = { x: area.x + area.width - 80, y: area.y + (area.height - SIZE) / 2 }
+      position = { x: area.x + area.width - windowSize() - 8, y: area.y + (area.height - windowSize()) / 2 }
     }
     place(position)
     positionPanel()
@@ -104,7 +111,25 @@ function createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath, onCli
     locked = value === true
     persist()
   }
-  return { getState, restore, positionPanel, startDrag, moveDrag, endDrag, cancelDrag, setLocked }
+  function setSize(value) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < MIN_SIZE || value > MAX_SIZE) {
+      throw new Error(`悬浮球大小须为 ${MIN_SIZE}–${MAX_SIZE} px`)
+    }
+    cancelDrag()
+    const before = orbWindow.getBounds()
+    if (!resizeCenter) resizeCenter = { x: before.x + before.width / 2, y: before.y + before.height / 2 }
+    size = Math.round(value)
+    // Preserve the center unless a screen edge requires clamping.
+    const target = { x: resizeCenter.x - windowSize() / 2, y: resizeCenter.y - windowSize() / 2 }
+    place(target, true)
+    if (position.x !== Math.round(target.x) || position.y !== Math.round(target.y)) {
+      resizeCenter = { x: position.x + windowSize() / 2, y: position.y + windowSize() / 2 }
+    }
+    if (panelWindow.isVisible()) positionPanel()
+    persist()
+    return getState()
+  }
+  return { getState, restore, positionPanel, startDrag, moveDrag, endDrag, cancelDrag, setLocked, setSize }
 }
 
 module.exports = { createFloatingOrb }

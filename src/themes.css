@@ -36,8 +36,6 @@ html[data-theme]:not([data-theme="neon"]) [class*="blur-3xl"] { display: none; }
 html[data-theme]:not([data-theme="neon"]) :is(.fab-dock, .panel-slide-in, .modal-card, .toast-item) { animation: none; }
 html[data-theme]:not([data-theme="neon"]) .desktop-orb { background: var(--color-panel); color: var(--color-ink); border-color: var(--color-line-bright); }
 html[data-theme]:not([data-theme="neon"]) .desktop-orb:hover { background: var(--color-panel-3); outline-color: var(--color-dim); }
-html[data-theme]:not([data-theme="neon"]) .desktop-sparkle { color: var(--color-ink); }
-html[data-theme]:not([data-theme="neon"]) .desktop-orb.is-locked .desktop-sparkle { background: var(--color-panel); color: var(--color-ink); }
 html[data-theme]:not([data-theme="neon"]) input { accent-color: var(--color-ink); }
 html[data-theme]:not([data-theme="neon"]) ::-webkit-scrollbar-track { background: var(--color-void); }
 html[data-theme]:not([data-theme="neon"]) ::-webkit-scrollbar-thumb { background: var(--color-line-bright); border-color: var(--color-void); }

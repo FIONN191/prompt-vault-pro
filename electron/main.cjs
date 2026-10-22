@@ -138,7 +138,9 @@ else {
       } catch (error) { return { ok: false, error: error.message || '操作失败' } }
       finally { dataBusy = false }
     })
-    floatingOrb = createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath: path.join(app.getPath('userData'), 'floating-orb.json'), onClick: togglePanel })
+    floatingOrb = createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath: path.join(app.getPath('userData'), 'floating-orb.json'), onClick: togglePanel,
+      onStateChange: value => { if (!mainWindow.isDestroyed()) mainWindow.webContents.send('desktop:orb-state', value) },
+    })
     floatingOrb.restore()
     mainWindow.on('close', event => { if (!quitting) { event.preventDefault(); mainWindow.hide() } })
     panelWindow.on('close', event => { if (!quitting) { event.preventDefault(); closePanel() } })
@@ -148,7 +150,12 @@ else {
     screen.on('display-metrics-changed', floatingOrb.restore)
     orbWindow.on('blur', floatingOrb.cancelDrag)
     orbWindow.on('hide', floatingOrb.cancelDrag)
-    ipcMain.handle('desktop:orb-state', event => trusted(event, orbWindow) ? floatingOrb.getState() : null)
+    ipcMain.handle('desktop:orb-state', event => trusted(event, orbWindow) || trusted(event, mainWindow) ? floatingOrb.getState() : null)
+    ipcMain.handle('desktop:orb-size', (event, value) => {
+      if (!trusted(event, mainWindow)) return { ok: false, error: '无权操作' }
+      try { return { ok: true, data: floatingOrb.setSize(value) } }
+      catch (error) { return { ok: false, error: error.message } }
+    })
     ipcMain.on('desktop:orb-drag-start', (event, id) => { if (trusted(event, orbWindow)) floatingOrb.startDrag(id) })
     ipcMain.on('desktop:orb-drag-move', (event, id) => { if (trusted(event, orbWindow)) floatingOrb.moveDrag(id) })
     ipcMain.on('desktop:orb-drag-end', (event, id, cancelled) => { if (trusted(event, orbWindow)) floatingOrb.endDrag(id, cancelled === true) })
@@ -204,6 +211,7 @@ else {
     const floatingItems = () => [
       { label: '打开提示词库', click: () => showMain() },
       { label: '账号与设置', click: openSettings },
+      { id: 'orb-size', label: '悬浮球大小…', click: openSettings },
       { label: '打开 / 收起快速面板', click: togglePanel },
       { id: 'orb-locked', label: '固定位置', type: 'checkbox', checked: floatingOrb.getState().locked, click: item => changeLocked(item.checked) },
       { label: '显示悬浮球', click: () => { floatingOrb.restore(); closePanel() } },

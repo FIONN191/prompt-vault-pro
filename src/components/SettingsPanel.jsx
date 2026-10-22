@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { usePreferences } from '../PreferencesContext.jsx'
 import { THEMES } from '../utils/preferences.js'
 import packageInfo from '../../package.json'
+import OrbSizeSettings from './OrbSizeSettings.jsx'
 
 const PROVIDERS = [{ id: 'google.com', name: 'Google', icon: 'G' }, { id: 'github.com', name: 'GitHub', icon: '⌘' }, { id: 'apple.com', name: 'Apple', icon: '●' }]
 const EMPTY_CONFIG = { apiKey: '', projectId: '', authDomain: '', appId: '', providers: ['google.com', 'github.com'] }
@@ -46,6 +47,7 @@ export default function SettingsPanel({ onNavigate, onManageCategories }) {
     <div className="flex items-start justify-between gap-4 mb-7"><div><p className="text-xs tracking-[.2em] text-faint mb-2">PERSONAL WORKSPACE</p><h1 className="text-2xl font-bold">账号与设置</h1><p className="text-sm text-dim mt-2">按照你的习惯，让工作台随时就绪。</p></div><span className="text-xs font-mono text-dim border border-line rounded-full px-3 py-1.5">v{system?.version || packageInfo.version}</span></div>
     {error && <p className="border border-magenta/30 rounded-xl p-3 text-sm text-magenta" role="alert">{error}</p>}
     {notice && <p className="border border-line rounded-xl p-3 text-sm" role="status">{notice}</p>}
+    {bridge && <Section title="悬浮球大小" description="拖动滑杆调整桌面悬浮球大小，图标会同步缩放。"><OrbSizeSettings /></Section>}
     <Section title="我的账号" description="使用已有账号登录，或继续作为访客使用全部本地功能。">
       <div className="flex gap-4 items-center mb-5"><div className="w-12 h-12 shrink-0 rounded-2xl bg-ink/10 grid place-items-center text-xl font-bold">{(account?.user?.displayName || account?.user?.email || 'P').slice(0, 1).toUpperCase()}</div><div className="min-w-0"><div className="font-semibold truncate">{account?.user?.displayName || account?.user?.email || '你的个人提示词空间'}</div><div className="text-xs text-dim mt-1 break-all">{status}{account?.user?.email && ` · ${account.user.email}`}</div></div></div>
       {!bridge ? <p className="text-sm text-dim">请在 Mac 或 Windows 桌面应用中登录账号。网页预览仍可编辑和管理本地提示词。</p> : <>

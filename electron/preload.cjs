@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('desktopPrompt', {
   openMain: id => ipcRenderer.send('desktop:main', id),
   menu: () => ipcRenderer.send('desktop:menu'),
   getOrbState: () => ipcRenderer.invoke('desktop:orb-state'),
+  setOrbSize: value => ipcRenderer.invoke('desktop:orb-size', value),
   onOrbState: cb => listen('desktop:orb-state', cb),
   startOrbDrag: id => ipcRenderer.send('desktop:orb-drag-start', id),
   moveOrbDrag: id => ipcRenderer.send('desktop:orb-drag-move', id),
