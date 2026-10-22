@@ -138,8 +138,17 @@ else {
       } catch (error) { return { ok: false, error: error.message || '操作失败' } }
       finally { dataBusy = false }
     })
+    let floatingMenu
+    function syncOrbMenus(state) {
+      for (const menu of [floatingMenu, Menu.getApplicationMenu()]) {
+        for (const [id, checked] of [['orb-locked', state.locked], ['orb-snap', state.snapToEdge]]) {
+          const item = menu?.getMenuItemById(id)
+          if (item) item.checked = checked
+        }
+      }
+    }
     floatingOrb = createFloatingOrb({ orbWindow, panelWindow, screen, settingsPath: path.join(app.getPath('userData'), 'floating-orb.json'), onClick: togglePanel,
-      onStateChange: value => { if (!mainWindow.isDestroyed()) mainWindow.webContents.send('desktop:orb-state', value) },
+      onStateChange: value => { if (!mainWindow.isDestroyed()) mainWindow.webContents.send('desktop:orb-state', value); syncOrbMenus(value) },
     })
     floatingOrb.restore()
     mainWindow.on('close', event => { if (!quitting) { event.preventDefault(); mainWindow.hide() } })
@@ -154,6 +163,11 @@ else {
     ipcMain.handle('desktop:orb-size', (event, value) => {
       if (!trusted(event, mainWindow)) return { ok: false, error: '无权操作' }
       try { return { ok: true, data: floatingOrb.setSize(value) } }
+      catch (error) { return { ok: false, error: error.message } }
+    })
+    ipcMain.handle('desktop:orb-snap', (event, value) => {
+      if (!trusted(event, mainWindow)) return { ok: false, error: '无权操作' }
+      try { return { ok: true, data: floatingOrb.setSnapToEdge(value) } }
       catch (error) { return { ok: false, error: error.message } }
     })
     ipcMain.on('desktop:orb-drag-start', (event, id) => { if (trusted(event, orbWindow)) floatingOrb.startDrag(id) })
@@ -200,13 +214,8 @@ else {
       suspended: () => dataBusy,
       close: closePanel,
     })
-    let floatingMenu
     function changeLocked(value) {
       floatingOrb.setLocked(value)
-      for (const menu of [floatingMenu, Menu.getApplicationMenu()]) {
-        const item = menu?.getMenuItemById('orb-locked')
-        if (item) item.checked = floatingOrb.getState().locked
-      }
     }
     const floatingItems = () => [
       { label: '打开提示词库', click: () => showMain() },
@@ -214,6 +223,7 @@ else {
       { id: 'orb-size', label: '悬浮球大小…', click: openSettings },
       { label: '打开 / 收起快速面板', click: togglePanel },
       { id: 'orb-locked', label: '固定位置', type: 'checkbox', checked: floatingOrb.getState().locked, click: item => changeLocked(item.checked) },
+      { id: 'orb-snap', label: '吸附屏幕边缘', type: 'checkbox', checked: floatingOrb.getState().snapToEdge, click: item => floatingOrb.setSnapToEdge(item.checked) },
       { label: '显示悬浮球', click: () => { floatingOrb.restore(); closePanel() } },
       { label: '隐藏悬浮球', click: () => { orbWindow.hide(); panelWindow.hide() } },
       { type: 'separator' },

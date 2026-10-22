@@ -25,10 +25,43 @@ async function pages(app) {
     await slider.waitFor()
     await main.waitForFunction(() => !document.querySelector('#orb-size-range').disabled)
     assert.equal(await slider.inputValue(), '56')
+    const snap = main.getByRole('checkbox', { name: '吸附屏幕边缘', exact: true })
+    assert.equal(await snap.isChecked(), false)
+    await snap.check()
+    assert.equal(await app.evaluate(({ Menu }) => Menu.getApplicationMenu().getMenuItemById('orb-snap').checked), true)
+    await app.evaluate(({ Menu }) => Menu.getApplicationMenu().getMenuItemById('orb-snap').click())
+    await main.waitForFunction(() => !document.querySelector('input[aria-label="吸附屏幕边缘"]').checked)
+    await snap.check()
+    assert.equal((await panel.evaluate(() => window.desktopPrompt.setOrbSnap(false))).ok, false)
+    assert.equal((await main.evaluate(() => window.desktopPrompt.setOrbSnap('yes'))).ok, false)
+    // Drive the native drag IPC against real windows with a deterministic cursor.
+    const area = await app.evaluate(({ BrowserWindow, screen }) => {
+      const win = BrowserWindow.getAllWindows().find(w => w.webContents.getURL().includes('desktop-orb'))
+      const b = win.getBounds()
+      global.originalCursor = screen.getCursorScreenPoint
+      global.testCursor = { x: b.x + b.width / 2, y: b.y + b.height / 2 }
+      screen.getCursorScreenPoint = () => global.testCursor
+      return screen.getDisplayNearestPoint(global.testCursor).workArea
+    })
+    await orb.evaluate(() => window.desktopPrompt.startOrbDrag(7))
+    await app.evaluate(({ BrowserWindow }, area) => {
+      const b = BrowserWindow.getAllWindows().find(w => w.webContents.getURL().includes('desktop-orb')).getBounds()
+      global.testCursor = { x: area.x + area.width - 12 - b.width / 2, y: area.y + 160 + b.height / 2 }
+    }, area)
+    await orb.evaluate(() => { window.desktopPrompt.moveOrbDrag(7); window.desktopPrompt.endOrbDrag(7) })
+    await orb.waitForFunction(async () => {
+      const state = await window.desktopPrompt.getOrbState()
+      return state.snapToEdge && window.screenX + window.innerWidth === window.screen.availLeft + window.screen.availWidth
+    })
+    const docked = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => w.webContents.getURL().includes('desktop-orb')).getBounds())
+    assert.equal(docked.x + docked.width, area.x + area.width)
+    await app.evaluate(({ screen }) => { screen.getCursorScreenPoint = global.originalCursor; delete global.originalCursor; delete global.testCursor })
     assert.equal(await orb.locator('.desktop-sparkle').count(), 0)
     assert.equal(await orb.locator('.desktop-orb svg').count(), 1)
     await slider.focus(); await slider.press('End')
     await orb.waitForFunction(() => window.innerWidth === 136)
+    const enlarged = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => w.webContents.getURL().includes('desktop-orb')).getBounds())
+    assert.equal(enlarged.x + enlarged.width, area.x + area.width)
     assert.equal((await orb.locator('.desktop-orb').boundingBox()).width, 120)
     await slider.press('Home')
     await orb.waitForFunction(() => window.innerWidth === 56)
@@ -48,11 +81,13 @@ async function pages(app) {
     ;({ main, orb, panel } = await pages(app))
     await orb.waitForFunction(() => window.innerWidth === 135)
     assert.equal((await orb.evaluate(() => window.desktopPrompt.getOrbState())).size, 119)
+    assert.equal((await orb.evaluate(() => window.desktopPrompt.getOrbState())).snapToEdge, true)
+    assert.equal(await app.evaluate(({ Menu }) => Menu.getApplicationMenu().getMenuItemById('orb-snap').checked), true)
     assert.equal(await orb.locator('button').getAttribute('data-locked'), 'true')
     await orb.locator('button').focus(); await orb.keyboard.press('Enter')
     await panel.getByLabel('搜索提示词或标签').waitFor()
     await panel.keyboard.press('Escape')
     assert.deepEqual(errors, [])
-    console.log(JSON.stringify({ passed: true, profile, checks: ['menu entry', 'no badge', 'slider min/max', 'restricted IPC', 'reset', 'custom 119px', 'lock and restart persistence', 'open panel while locked'] }, null, 2))
+    console.log(JSON.stringify({ passed: true, profile, checks: ['menu entry', 'snap checkbox/menu sync', 'native window edge geometry', 'docked resize', 'no badge', 'slider min/max', 'restricted IPC', 'reset', 'custom 119px', 'snap/lock restart persistence', 'open panel while locked'] }, null, 2))
   } finally { await app.close() }
 })().catch(error => { console.error(error); process.exitCode = 1 })

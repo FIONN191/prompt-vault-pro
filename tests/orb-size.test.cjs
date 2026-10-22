@@ -2,16 +2,16 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs'), os = require('node:os'), path = require('node:path')
 const { createFloatingOrb } = require('../electron/floating-orb.cjs')
-function setup(saved) {
+function setup(saved, displays = null) {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'pvp-orb-unit-')), 'floating-orb.json')
   if (saved) fs.writeFileSync(file, JSON.stringify(saved))
   let rect = { x: 500, y: 300, width: 72, height: 72 }, panelRect, cursor = { x: 400, y: 300 }, clicks = 0
   const area = { x: -1000, y: 0, width: 2000, height: 800 }
   const orbWindow = { webContents: { send() {} }, isVisible: () => true, getBounds: () => ({ ...rect }), setBounds: value => { rect = value } }
   const panelWindow = { on() {}, isVisible: () => true, getBounds: () => panelRect, setBounds: value => { panelRect = value } }
-  const create = () => createFloatingOrb({ orbWindow, panelWindow, settingsPath: file, screen: { getDisplayNearestPoint: () => ({ workArea: area }), getCursorScreenPoint: () => cursor }, onClick: () => clicks++ })
+  const create = () => createFloatingOrb({ orbWindow, panelWindow, settingsPath: file, screen: { getDisplayNearestPoint: point => displays?.find(d => point.x >= d.workArea.x && point.x < d.workArea.x + d.workArea.width && point.y >= d.workArea.y && point.y < d.workArea.y + d.workArea.height) || { workArea: area }, getCursorScreenPoint: () => cursor }, onClick: () => clicks++ })
   const orb = create(); orb.restore()
-  return { orb, create, file, rect: () => rect, panel: () => panelRect, cursor: value => { cursor = value }, clicks: () => clicks }
+  return { orb, create, file, area, rect: () => rect, panel: () => panelRect, cursor: value => { cursor = value }, clicks: () => clicks }
 }
 test('legacy position and lock survive; custom size persists and preserves center', () => {
   const c = setup({ locked: true, position: { x: 100, y: 200 } })
@@ -62,4 +62,68 @@ test('failed storage writes are reported and recover on retry', () => {
   fs.rmdirSync(c.file + '.tmp')
   assert.equal(c.orb.setSize(90).persistenceError, false)
   assert.equal(JSON.parse(fs.readFileSync(c.file)).size, 90)
+})
+function drop(c, x, y, cancelled = false) {
+  const before = c.rect()
+  c.cursor({ x: 0, y: 0 }); c.orb.startDrag(1)
+  c.cursor({ x: x - before.x, y: y - before.y })
+  c.orb.moveDrag(1); c.orb.endDrag(1, cancelled)
+}
+test('snap is opt-in; toggling never moves the orb and accepts only booleans', () => {
+  const c = setup({ position: { x: 900, y: 200 } })
+  assert.equal(c.orb.getState().snapToEdge, false)
+  drop(c, 915, 210); assert.equal(c.rect().x, 915)
+  c.orb.setSnapToEdge(true); assert.equal(c.rect().x, 915)
+  for (const value of ['true', 1, null, {}]) assert.throws(() => c.orb.setSnapToEdge(value))
+  drop(c, 916, 220); assert.equal(c.rect().x, 928)
+  c.orb.setSnapToEdge(false); assert.equal(c.rect().x, 928)
+  drop(c, 916, 230); assert.equal(c.rect().x, 916)
+})
+test('four edges, threshold boundary, corner tie, negative coordinates and far release', () => {
+  for (const [x, y, edge, expectedX, expectedY] of [
+    [-980, 300, 'left', -1000, 300], [910, 300, 'right', 928, 300],
+    [300, 20, 'top', 300, 0], [300, 710, 'bottom', 300, 728],
+    [-980, 20, 'left', -1000, 20], [904, 300, 'right', 928, 300],
+    [903, 300, null, 903, 300], [100, 300, null, 100, 300],
+  ]) {
+    const c = setup(); c.orb.setSnapToEdge(true); drop(c, x, y)
+    assert.equal(c.rect().x, expectedX); assert.equal(c.rect().y, expectedY)
+    assert.equal(JSON.parse(fs.readFileSync(c.file)).dockedEdge, edge)
+    assert.equal(c.clicks(), 0)
+  }
+})
+test('locked, cancelled and click gestures never snap; drag away releases docking', () => {
+  const c = setup({ position: { x: 910, y: 200 }, snapToEdge: true, locked: true })
+  drop(c, 920, 300); assert.equal(c.rect().x, 910)
+  c.orb.setLocked(false); drop(c, 920, 300, true); assert.equal(c.rect().x, 920)
+  c.orb.startDrag(3); c.orb.endDrag(3)
+  assert.equal(c.rect().x, 920); assert.equal(c.clicks(), 1)
+  drop(c, 915, 310); assert.equal(c.rect().x, 928)
+  drop(c, 500, 310); assert.equal(c.rect().x, 500)
+  assert.equal(JSON.parse(fs.readFileSync(c.file)).dockedEdge, null)
+})
+test('docking survives resize, restart and changed work area; disabling frees center', () => {
+  const c = setup(); c.orb.setSnapToEdge(true); drop(c, 915, 300)
+  c.orb.setSize(120); assert.equal(c.rect().x + c.rect().width, 1000)
+  const restored = c.create(); restored.restore()
+  assert.equal(restored.getState().snapToEdge, true)
+  assert.equal(c.rect().x + c.rect().width, 1000)
+  c.area.width = 1600; restored.restore()
+  assert.equal(c.rect().x + c.rect().width, 600)
+  restored.setSnapToEdge(false)
+  const oldCenter = c.rect().x + c.rect().width / 2
+  restored.setSize(40)
+  assert.equal(c.rect().x + c.rect().width / 2, oldCenter)
+})
+test('uses the destination display in DIPs; removed displays recover on-screen', () => {
+  const displays = [{ scaleFactor: 2, workArea: { x: 2000, y: -200, width: 1200, height: 900 } }]
+  const c = setup({ position: { x: 300, y: 300 }, snapToEdge: true }, displays)
+  drop(c, 3110, 100)
+  assert.equal(c.rect().x + c.rect().width, 3200)
+  c.orb.setSize(100)
+  assert.equal(c.rect().x + c.rect().width, 3200)
+  displays.length = 0
+  c.orb.restore()
+  assert.equal(c.rect().x + c.rect().width, 1000)
+  assert.ok(c.rect().y >= 0 && c.rect().y + c.rect().height <= 800)
 })
